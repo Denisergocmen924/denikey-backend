@@ -1,0 +1,135 @@
+import os
+import base64
+from argon2.low_level import hash_secret_raw, Type
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from jose import JWTError, jwt
+from datetime import datetime, timedelta
+from typing import Optional
+from app.core.config import settings
+
+
+# ============================================================
+# ARGON2 — Master Password'den Şifreleme Anahtarı Türetme
+# ============================================================
+
+def derive_encryption_key(master_password: str, salt: bytes) -> bytes:
+    """
+    Master password + salt kullanarak AES-256 anahtarı türetir.
+    Argon2id algoritması kullanılır.
+    """
+    key = hash_secret_raw(
+        secret=master_password.encode('utf-8'),
+        salt=salt,
+        time_cost=2,
+        memory_cost=65536,
+        parallelism=2,
+        hash_len=32,
+        type=Type.ID
+    )
+    return key
+
+
+def generate_salt() -> bytes:
+    """Yeni bir rastgele salt üretir."""
+    return os.urandom(16)
+
+
+def salt_to_string(salt: bytes) -> str:
+    """Salt'ı veritabanında saklamak için string'e çevirir."""
+    return base64.b64encode(salt).decode('utf-8')
+
+
+def string_to_salt(salt_str: str) -> bytes:
+    """String salt'ı bytes'a çevirir."""
+    return base64.b64decode(salt_str.encode('utf-8'))
+
+
+# ============================================================
+# AES-256-GCM — Şifreleme ve Çözme
+# ============================================================
+
+def encrypt_data(data: str, key: bytes) -> str:
+    """
+    Veriyi AES-256-GCM ile şifreler.
+    Döndürülen format: base64(nonce + ciphertext)
+    """
+    aesgcm = AESGCM(key)
+    nonce = os.urandom(12)
+    ciphertext = aesgcm.encrypt(nonce, data.encode('utf-8'), None)
+    encrypted = nonce + ciphertext
+    return base64.b64encode(encrypted).decode('utf-8')
+
+
+def decrypt_data(encrypted_data: str, key: bytes) -> str:
+    """
+    AES-256-GCM ile şifrelenmiş veriyi çözer.
+    """
+    encrypted_bytes = base64.b64decode(encrypted_data.encode('utf-8'))
+    nonce = encrypted_bytes[:12]
+    ciphertext = encrypted_bytes[12:]
+    aesgcm = AESGCM(key)
+    decrypted = aesgcm.decrypt(nonce, ciphertext, None)
+    return decrypted.decode('utf-8')
+
+
+# ============================================================
+# JWT — Token Üretme ve Doğrulama
+# ============================================================
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+    """
+    JWT access token üretir.
+    """
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(
+            minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+        )
+    to_encode.update({"exp": expire})
+    token = jwt.encode(
+        to_encode,
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM
+    )
+    return token
+
+
+def verify_access_token(token: str) -> Optional[dict]:
+    """
+    JWT token'ı doğrular ve payload'ı döndürür.
+    Geçersiz token'da None döner.
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+        return payload
+    except JWTError:
+        return None
+
+
+# ============================================================
+# DOĞRULAMA HASH — Master Password Sunucu Tarafı Doğrulama
+# ============================================================
+
+def hash_master_password_for_auth(master_password: str, salt: bytes) -> str:
+    """
+    Master password'ün sunucuya gönderilecek doğrulama hash'ini üretir.
+    Bu hash şifreleme anahtarından FARKLI bir türetmedir.
+    Sunucu bu hash'i saklar, asla master password'ü görmez.
+    """
+    auth_salt = salt + b"_auth"
+    auth_hash = hash_secret_raw(
+        secret=master_password.encode('utf-8'),
+        salt=auth_salt,
+        time_cost=1,
+        memory_cost=32768,
+        parallelism=1,
+        hash_len=32,
+        type=Type.ID
+    )
+    return base64.b64encode(auth_hash).decode('utf-8')
