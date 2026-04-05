@@ -6,12 +6,12 @@ from app.services.user_service import register_user, login_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-
 @router.post("/register", response_model=TokenResponse)
 async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
     result = await register_user(db, data)
     return TokenResponse(
         access_token=result["access_token"],
+        encryption_key_salt=result["encryption_key_salt"],
         user=UserResponse(
             id=str(result["user"].id),
             username=result["user"].username,
@@ -24,12 +24,12 @@ async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
         )
     )
 
-
 @router.post("/login", response_model=TokenResponse)
 async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
     result = await login_user(db, data.username, data.master_password)
     return TokenResponse(
         access_token=result["access_token"],
+        encryption_key_salt=result["encryption_key_salt"],
         user=UserResponse(
             id=str(result["user"].id),
             username=result["user"].username,

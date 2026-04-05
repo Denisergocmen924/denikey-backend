@@ -1,7 +1,6 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, field_validator
 from typing import Optional
 import re
-
 
 class UserRegister(BaseModel):
     username: str
@@ -9,6 +8,7 @@ class UserRegister(BaseModel):
     phone: Optional[str] = None
     full_name: Optional[str] = None
     master_password: str
+    encryption_key_salt: str
 
     @field_validator('username')
     @classmethod
@@ -26,20 +26,13 @@ class UserRegister(BaseModel):
             raise ValueError('Master password en az 6 karakter olmalı')
         return v
 
-    @field_validator('email')
-    @classmethod
-    def email_or_phone_required(cls, v):
-        return v
-
     def validate_email_or_phone(self):
         if not self.email and not self.phone:
             raise ValueError('E-posta veya telefon numarası zorunlu')
 
-
 class UserLogin(BaseModel):
     username: str
     master_password: str
-
 
 class UserResponse(BaseModel):
     id: str
@@ -54,8 +47,8 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    encryption_key_salt: str
     user: UserResponse

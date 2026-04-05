@@ -15,6 +15,7 @@ class VaultItem(Base):
     email = Column(String(255), nullable=True)
     phone = Column(String(50), nullable=True)
     encrypted_password = Column(Text, nullable=False)
+    iv = Column(String(255), nullable=True)
     encryption_version = Column(Integer, default=1)
     notes = Column(Text, nullable=True)
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True)

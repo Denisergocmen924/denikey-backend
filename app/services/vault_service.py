@@ -11,11 +11,7 @@ from datetime import datetime, timedelta
 import uuid
 
 
-async def create_vault_item(
-    db: AsyncSession,
-    data: VaultItemCreate,
-    current_user: User
-) -> VaultItem:
+async def create_vault_item(db: AsyncSession, data: VaultItemCreate, current_user: User) -> VaultItem:
     if data.custom_fields and len(data.custom_fields) > 3:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -31,6 +27,7 @@ async def create_vault_item(
         email=data.email,
         phone=data.phone,
         encrypted_password=data.encrypted_password,
+        iv=data.iv,
         notes=data.notes,
         category_id=uuid.UUID(data.category_id) if data.category_id else None,
         color=data.color,
@@ -60,15 +57,20 @@ async def create_vault_item(
         .where(VaultItem.id == item_id)
     )
     item = result.scalar_one()
-
     return _serialize_item(item)
 
 
 async def get_vault_items(db: AsyncSession, current_user: User) -> list:
+    # Trash'tekileri filtrele
+    trash_subquery = select(Trash.vault_item_id)
+
     result = await db.execute(
         select(VaultItem)
         .options(selectinload(VaultItem.custom_fields))
-        .where(VaultItem.user_id == current_user.id)
+        .where(
+            VaultItem.user_id == current_user.id,
+            VaultItem.id.not_in(trash_subquery)
+        )
         .order_by(VaultItem.sort_order, VaultItem.created_at.desc())
     )
     items = result.scalars().all()
@@ -135,11 +137,33 @@ async def delete_vault_item(db: AsyncSession, item_id: str, current_user: User) 
     return {"message": "Kayıt çöp kutusuna taşındı"}
 
 
-def _serialize_item(item: VaultItem) -> VaultItem:
-    item.id = str(item.id)
-    item.user_id = str(item.user_id)
-    if item.category_id:
-        item.category_id = str(item.category_id)
-    for field in item.custom_fields:
-        field.id = str(field.id)
-    return item
+def _serialize_item(item: VaultItem) -> dict:
+    return {
+        "id": str(item.id),
+        "user_id": str(item.user_id),
+        "title": item.title,
+        "username": item.username,
+        "email": item.email,
+        "phone": item.phone,
+        "encrypted_password": item.encrypted_password,
+        "iv": item.iv,
+        "encryption_version": item.encryption_version,
+        "notes": item.notes,
+        "category_id": str(item.category_id) if item.category_id else None,
+        "color": item.color,
+        "icon": item.icon,
+        "is_favorite": item.is_favorite,
+        "sort_order": item.sort_order,
+        "created_at": item.created_at,
+        "updated_at": item.updated_at,
+        "custom_fields": [
+            {
+                "id": str(f.id),
+                "field_name": f.field_name,
+                "field_type": f.field_type,
+                "encrypted_value": f.encrypted_value,
+                "sort_order": f.sort_order,
+            }
+            for f in item.custom_fields
+        ],
+    }
