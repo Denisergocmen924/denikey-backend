@@ -4,6 +4,9 @@ from sqlalchemy import pool
 from alembic import context
 import sys
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -11,6 +14,10 @@ from app.db.database import Base
 from app.models import user, vault_item, category, custom_field, device, audit_log, password_history, trash, support_ticket
 
 config = context.config
+
+# .env'den DATABASE_URL'i al, postgresql+psycopg2'ye çevir
+database_url = os.getenv("DATABASE_URL", "").replace("postgresql://", "postgresql+psycopg2://")
+config.set_main_option("sqlalchemy.url", database_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
