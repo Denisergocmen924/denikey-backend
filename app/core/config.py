@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # Şifreleme
     ENCRYPTION_VERSION: int = 1
 
+    # Resend (e-posta)
+    RESEND_API_KEY: str
+
     class Config:
         env_file = ".env"
         case_sensitive = True

@@ -11,7 +11,7 @@ load_dotenv()
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.db.database import Base
-from app.models import user, vault_item, category, custom_field, device, audit_log, password_history, trash, support_ticket
+from app.models import user, vault_item, category, custom_field, device, audit_log, password_history, trash, support_ticket, verification_code
 
 config = context.config
 
