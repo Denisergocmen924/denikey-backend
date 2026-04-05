@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.schemas.user import UserRegister, UserLogin, UserResponse, TokenResponse
@@ -7,8 +7,9 @@ from app.services.user_service import register_user, login_user
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/register", response_model=TokenResponse)
-async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
-    result = await register_user(db, data)
+async def register(data: UserRegister, request: Request, db: AsyncSession = Depends(get_db)):
+    ip = request.client.host if request.client else None
+    result = await register_user(db, data, ip_address=ip)
     return TokenResponse(
         access_token=result["access_token"],
         encryption_key_salt=result["encryption_key_salt"],
@@ -25,8 +26,9 @@ async def register(data: UserRegister, db: AsyncSession = Depends(get_db)):
     )
 
 @router.post("/login", response_model=TokenResponse)
-async def login(data: UserLogin, db: AsyncSession = Depends(get_db)):
-    result = await login_user(db, data.username, data.master_password)
+async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(get_db)):
+    ip = request.client.host if request.client else None
+    result = await login_user(db, data.username, data.master_password, ip_address=ip)
     return TokenResponse(
         access_token=result["access_token"],
         encryption_key_salt=result["encryption_key_salt"],

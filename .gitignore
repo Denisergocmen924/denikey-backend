@@ -6,3 +6,5 @@ __pycache__/
 *.egg-info/
 alembic.ini
 alembic.ini
+__pycache__/
+*.pyc

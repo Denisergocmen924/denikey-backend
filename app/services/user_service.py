@@ -7,10 +7,11 @@ from app.core.security import (
     hash_master_password_for_auth,
     create_access_token
 )
+from app.services.audit_log_service import create_audit_log
 from fastapi import HTTPException, status
 import uuid
 
-async def register_user(db: AsyncSession, data: UserRegister) -> dict:
+async def register_user(db: AsyncSession, data: UserRegister, ip_address: str = None) -> dict:
     if not data.email and not data.phone:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -40,7 +41,6 @@ async def register_user(db: AsyncSession, data: UserRegister) -> dict:
                 detail="Bu telefon numarası zaten kayıtlı"
             )
 
-    # Flutter'dan gelen salt kullanılıyor
     salt = string_to_salt(data.encryption_key_salt)
     password_hash = hash_master_password_for_auth(data.master_password, salt)
 
@@ -57,10 +57,20 @@ async def register_user(db: AsyncSession, data: UserRegister) -> dict:
     await db.flush()
     await db.refresh(user)
 
+    # Audit log
+    await create_audit_log(
+        db=db,
+        user_id=str(user.id),
+        action="register",
+        status="success",
+        ip_address=ip_address,
+    )
+
     token = create_access_token({"sub": str(user.id), "username": user.username})
     return {"user": user, "access_token": token, "encryption_key_salt": user.encryption_key_salt}
 
-async def login_user(db: AsyncSession, username: str, master_password: str) -> dict:
+
+async def login_user(db: AsyncSession, username: str, master_password: str, ip_address: str = None) -> dict:
     result = await db.execute(select(User).where(User.username == username))
     user = result.scalar_one_or_none()
 
@@ -84,6 +94,17 @@ async def login_user(db: AsyncSession, username: str, master_password: str) -> d
         if user.failed_attempts >= 5:
             user.is_locked = True
         await db.flush()
+
+        # Başarısız giriş logu
+        await create_audit_log(
+            db=db,
+            user_id=str(user.id),
+            action="login_failed",
+            status="failed",
+            ip_address=ip_address,
+            extra_data={"reason": "wrong_password", "attempts": user.failed_attempts},
+        )
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Kullanıcı adı veya şifre hatalı"
@@ -91,6 +112,15 @@ async def login_user(db: AsyncSession, username: str, master_password: str) -> d
 
     user.failed_attempts = 0
     await db.flush()
+
+    # Başarılı giriş logu
+    await create_audit_log(
+        db=db,
+        user_id=str(user.id),
+        action="login_success",
+        status="success",
+        ip_address=ip_address,
+    )
 
     token = create_access_token({"sub": str(user.id), "username": user.username})
     return {"user": user, "access_token": token, "encryption_key_salt": user.encryption_key_salt}
