@@ -17,6 +17,7 @@ class User(Base):
     avatar_url = Column(String(500), nullable=True)
     preferred_language = Column(String(10), default="tr")
     preferred_theme = Column(String(20), default="system")
+    is_verified = Column(Boolean, default=False)
     is_locked = Column(Boolean, default=False)
     failed_attempts = Column(Integer, default=0)
     lock_until = Column(DateTime(timezone=True), nullable=True)

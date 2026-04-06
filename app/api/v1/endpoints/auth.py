@@ -2,9 +2,16 @@ from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.schemas.user import UserRegister, UserLogin, UserResponse, TokenResponse
-from app.services.user_service import register_user, login_user
+from app.services.user_service import register_user, login_user, verify_email
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+
+class VerifyEmailRequest(BaseModel):
+    user_id: str
+    code: str
+
 
 @router.post("/register", response_model=TokenResponse)
 async def register(data: UserRegister, request: Request, db: AsyncSession = Depends(get_db)):
@@ -24,6 +31,13 @@ async def register(data: UserRegister, request: Request, db: AsyncSession = Depe
             preferred_theme=result["user"].preferred_theme,
         )
     )
+
+
+@router.post("/verify-email")
+async def verify_email_endpoint(data: VerifyEmailRequest, db: AsyncSession = Depends(get_db)):
+    await verify_email(db, data.user_id, data.code)
+    return {"message": "E-posta doğrulandı"}
+
 
 @router.post("/login", response_model=TokenResponse)
 async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(get_db)):

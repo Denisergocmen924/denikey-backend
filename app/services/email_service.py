@@ -8,7 +8,7 @@ from app.models.verification_code import VerificationCode
 from app.core.config import settings
 import uuid
 
-resend.api_key = settings.resend_api_key
+resend.api_key = settings.RESEND_API_KEY
 
 
 def _generate_code() -> str:
