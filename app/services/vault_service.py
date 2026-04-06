@@ -38,6 +38,19 @@ async def create_vault_item(db: AsyncSession, data: VaultItemCreate, current_use
     db.add(vault_item)
     await db.flush()
 
+    if data.custom_fields_data:
+        for field_data in data.custom_fields_data:
+            custom_field = CustomField(
+                id=uuid.uuid4(),
+                vault_item_id=item_id,
+                field_name=field_data.field_name,
+                field_type=field_data.field_type,
+                encrypted_value=field_data.value,
+                sort_order=0,
+            )
+            db.add(custom_field)
+        await db.flush()
+
     if data.custom_fields:
         for field in data.custom_fields:
             custom_field = CustomField(

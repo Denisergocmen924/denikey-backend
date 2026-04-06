@@ -16,6 +16,11 @@ class CustomFieldResponse(BaseModel):
     sort_order: int
     model_config = {"from_attributes": True}
 
+class CustomFieldData(BaseModel):
+    field_name: str
+    value: str
+    field_type: str = "text"
+
 class VaultItemCreate(BaseModel):
     title: Optional[str] = None
     username: Optional[str] = None
@@ -30,6 +35,7 @@ class VaultItemCreate(BaseModel):
     is_favorite: bool = False
     sort_order: int = 0
     custom_fields: Optional[List[CustomFieldCreate]] = []
+    custom_fields_data: Optional[List[CustomFieldData]] = []
 
 class VaultItemUpdate(BaseModel):
     title: Optional[str] = None
