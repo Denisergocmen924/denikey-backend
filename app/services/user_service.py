@@ -60,7 +60,7 @@ async def register_user(db: AsyncSession, data: UserRegister, ip_address: str = 
     return {"user": user, "access_token": token, "encryption_key_salt": user.encryption_key_salt}
 
 
-async def verify_email(db: AsyncSession, user_id: str, code: str) -> bool:
+async def verify_email(db: AsyncSession, user_id: str, code: str) -> dict:
     result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
     user = result.scalar_one_or_none()
     if not user:
@@ -72,7 +72,8 @@ async def verify_email(db: AsyncSession, user_id: str, code: str) -> bool:
 
     user.is_verified = True
     await db.flush()
-    return True
+    token = create_access_token({"sub": str(user.id), "username": user.username})
+    return {"access_token": token, "encryption_key_salt": user.encryption_key_salt}
 
 
 async def login_user(db: AsyncSession, username: str, master_password: str, ip_address: str = None) -> dict:
@@ -103,3 +104,13 @@ async def login_user(db: AsyncSession, username: str, master_password: str, ip_a
 
     token = create_access_token({"sub": str(user.id), "username": user.username})
     return {"user": user, "access_token": token, "encryption_key_salt": user.encryption_key_salt}
+
+
+async def resend_verification(db, user_id: str):
+    from fastapi import HTTPException
+    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    if user.email:
+        await send_verification_code(db, user_id, user.email, "register")
