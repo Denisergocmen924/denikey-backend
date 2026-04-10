@@ -30,6 +30,7 @@ class VaultItemCreate(BaseModel):
     iv: Optional[str] = None
     notes: Optional[str] = None
     category_id: Optional[str] = None
+    item_type_id: Optional[str] = None
     color: Optional[str] = None
     icon: Optional[str] = None
     is_favorite: bool = False
@@ -46,10 +47,12 @@ class VaultItemUpdate(BaseModel):
     iv: Optional[str] = None
     notes: Optional[str] = None
     category_id: Optional[str] = None
+    item_type_id: Optional[str] = None
     color: Optional[str] = None
     icon: Optional[str] = None
     is_favorite: Optional[bool] = None
     sort_order: Optional[int] = None
+    custom_fields_data: Optional[List[CustomFieldData]] = None
 
 class VaultItemResponse(BaseModel):
     id: str
@@ -63,6 +66,7 @@ class VaultItemResponse(BaseModel):
     encryption_version: int
     notes: Optional[str] = None
     category_id: Optional[str] = None
+    item_type_id: Optional[str] = None
     color: Optional[str] = None
     icon: Optional[str] = None
     is_favorite: bool

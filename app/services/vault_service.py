@@ -6,6 +6,8 @@ from app.models.custom_field import CustomField
 from app.models.trash import Trash
 from app.schemas.vault_item import VaultItemCreate, VaultItemUpdate
 from app.models.user import User
+from app.services.password_history_service import record_password_change
+from app.services.audit_log_service import create_audit_log
 from fastapi import HTTPException, status
 from datetime import datetime, timedelta
 import uuid
@@ -30,6 +32,7 @@ async def create_vault_item(db: AsyncSession, data: VaultItemCreate, current_use
         iv=data.iv,
         notes=data.notes,
         category_id=uuid.UUID(data.category_id) if data.category_id else None,
+        item_type_id=uuid.UUID(data.item_type_id) if data.item_type_id else None,
         color=data.color,
         icon=data.icon,
         is_favorite=data.is_favorite,
@@ -70,6 +73,7 @@ async def create_vault_item(db: AsyncSession, data: VaultItemCreate, current_use
         .where(VaultItem.id == item_id)
     )
     item = result.scalar_one()
+    await create_audit_log(db=db, user_id=str(current_user.id), action="vault_item_created", status="success", extra_data={"title": item.title})
     return _serialize_item(item)
 
 
@@ -119,11 +123,33 @@ async def update_vault_item(db: AsyncSession, item_id: str, data: VaultItemUpdat
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Kayıt bulunamadı")
 
     update_data = data.model_dump(exclude_unset=True)
+    custom_fields_data = update_data.pop('custom_fields_data', None)
+
+    # Şifre değişiyorsa eskiyi geçmişe kaydet
+    if 'encrypted_password' in update_data and update_data['encrypted_password'] != item.encrypted_password:
+        await record_password_change(db, item, item.encrypted_password)
+
     for key, value in update_data.items():
         setattr(item, key, value)
 
+    if custom_fields_data is not None:
+        for field in item.custom_fields:
+            await db.delete(field)
+        await db.flush()
+        for i, field_data in enumerate(custom_fields_data):
+            custom_field = CustomField(
+                id=uuid.uuid4(),
+                vault_item_id=item.id,
+                field_name=field_data['field_name'],
+                field_type=field_data.get('field_type', 'text'),
+                encrypted_value=field_data['value'],
+                sort_order=i,
+            )
+            db.add(custom_field)
+
     await db.flush()
     await db.refresh(item)
+    await create_audit_log(db=db, user_id=str(current_user.id), action="vault_item_updated", status="success", extra_data={"title": item.title})
     return _serialize_item(item)
 
 
@@ -139,6 +165,7 @@ async def delete_vault_item(db: AsyncSession, item_id: str, current_user: User) 
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Kayıt bulunamadı")
 
+    item_title = item.title
     trash = Trash(
         id=uuid.uuid4(),
         user_id=current_user.id,
@@ -147,6 +174,7 @@ async def delete_vault_item(db: AsyncSession, item_id: str, current_user: User) 
     )
     db.add(trash)
     await db.flush()
+    await create_audit_log(db=db, user_id=str(current_user.id), action="vault_item_deleted", status="success", extra_data={"title": item_title})
     return {"message": "Kayıt çöp kutusuna taşındı"}
 
 
@@ -163,6 +191,7 @@ def _serialize_item(item: VaultItem) -> dict:
         "encryption_version": item.encryption_version,
         "notes": item.notes,
         "category_id": str(item.category_id) if item.category_id else None,
+        "item_type_id": str(item.item_type_id) if item.item_type_id else None,
         "color": item.color,
         "icon": item.icon,
         "is_favorite": item.is_favorite,

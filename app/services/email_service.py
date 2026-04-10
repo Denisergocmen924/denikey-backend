@@ -109,3 +109,23 @@ async def verify_code(
     verification.is_used = True
     await db.flush()
     return True
+
+
+async def send_email_change_notification(old_email: str) -> bool:
+    try:
+        resend.Emails.send({
+            "from": "onboarding@resend.dev",
+            "to": old_email,
+            "subject": "DeniKey — E-posta adresiniz değiştirildi",
+            "html": """
+                <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto;">
+                    <h2 style="color: #534AB7;">DeniKey</h2>
+                    <p>Hesabınıza bağlı e-posta adresi değiştirildi.</p>
+                    <p>Bu işlemi siz yapmadıysanız lütfen hemen bizimle iletişime geçin.</p>
+                    <p style="color: #888; font-size: 12px;">DeniKey Güvenlik Ekibi</p>
+                </div>
+            """,
+        })
+        return True
+    except Exception:
+        return False

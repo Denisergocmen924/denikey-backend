@@ -9,6 +9,8 @@ class UserRegister(BaseModel):
     full_name: Optional[str] = None
     master_password: str
     encryption_key_salt: str
+    device_id: Optional[str] = None
+    device_type: Optional[str] = None
 
     @field_validator('username')
     @classmethod
@@ -33,6 +35,8 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     username: str
     master_password: str
+    device_id: Optional[str] = None
+    device_type: Optional[str] = None
 
 class UserResponse(BaseModel):
     id: str

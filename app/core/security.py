@@ -87,13 +87,23 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expire = datetime.utcnow() + timedelta(
             minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
         )
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "type": "access"})
     token = jwt.encode(
         to_encode,
         settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM
     )
     return token
+
+
+def create_refresh_token(data: dict) -> str:
+    """
+    JWT refresh token üretir. Süresi access token'dan çok daha uzundur.
+    """
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire, "type": "refresh"})
+    return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
 def verify_access_token(token: str) -> Optional[dict]:
@@ -107,6 +117,23 @@ def verify_access_token(token: str) -> Optional[dict]:
             settings.JWT_SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM]
         )
+        return payload
+    except JWTError:
+        return None
+
+
+def verify_refresh_token(token: str) -> Optional[dict]:
+    """
+    Refresh token'ı doğrular. type == 'refresh' kontrolü yapar.
+    """
+    try:
+        payload = jwt.decode(
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.JWT_ALGORITHM]
+        )
+        if payload.get("type") != "refresh":
+            return None
         return payload
     except JWTError:
         return None
