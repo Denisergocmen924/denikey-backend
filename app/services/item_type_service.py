@@ -106,6 +106,94 @@ async def create_default_item_types(user_id: uuid.UUID, db: AsyncSession):
     await db.flush()
 
 
+async def create_item_type(user_id: uuid.UUID, data: dict, db: AsyncSession) -> dict:
+    item_type_id = uuid.uuid4()
+    item_type = ItemType(
+        id=item_type_id,
+        user_id=user_id,
+        name_tr=data["name_tr"],
+        name_en=data.get("name_en", data["name_tr"]),
+        icon=data.get("icon", "category"),
+        color=data.get("color", "#534AB7"),
+        is_system=False,
+        sort_order=999,
+    )
+    db.add(item_type)
+
+    # Kullanıcı alan tanımladıysa onları ekle; yoksa varsayılan "Şifre" alanı
+    custom_fields = data.get("fields") or []
+    if custom_fields:
+        created_fields = []
+        for i, f in enumerate(custom_fields):
+            name = f["field_name"] if isinstance(f, dict) else f.field_name
+            ftype = (f["field_type"] if isinstance(f, dict) else f.field_type) or "text"
+            required = (f["is_required"] if isinstance(f, dict) else f.is_required) or False
+            field_obj = ItemTypeField(
+                id=uuid.uuid4(),
+                item_type_id=item_type_id,
+                field_name_tr=name,
+                field_name_en=name,
+                field_type=ftype,
+                is_required=required,
+                sort_order=i,
+            )
+            db.add(field_obj)
+            created_fields.append(field_obj)
+    else:
+        default = ItemTypeField(
+            id=uuid.uuid4(),
+            item_type_id=item_type_id,
+            field_name_tr="Şifre",
+            field_name_en="Password",
+            field_type="secret",
+            is_required=True,
+            sort_order=0,
+        )
+        db.add(default)
+        created_fields = [default]
+
+    await db.flush()
+    await db.refresh(item_type)
+    return {
+        "id": str(item_type.id),
+        "name_tr": item_type.name_tr,
+        "name_en": item_type.name_en,
+        "icon": item_type.icon,
+        "color": item_type.color,
+        "is_system": item_type.is_system,
+        "sort_order": item_type.sort_order,
+        "fields": [
+            {
+                "id": str(f.id),
+                "field_name_tr": f.field_name_tr,
+                "field_name_en": f.field_name_en,
+                "field_type": f.field_type,
+                "is_required": f.is_required,
+                "sort_order": f.sort_order,
+            }
+            for f in created_fields
+        ],
+    }
+
+
+async def delete_item_type(user_id: uuid.UUID, item_type_id: str, db: AsyncSession):
+    from fastapi import HTTPException
+    from fastapi import status as http_status
+    result = await db.execute(
+        select(ItemType).where(
+            ItemType.id == uuid.UUID(item_type_id),
+            ItemType.user_id == user_id,
+        )
+    )
+    item_type = result.scalar_one_or_none()
+    if not item_type:
+        raise HTTPException(status_code=http_status.HTTP_404_NOT_FOUND, detail="Tür bulunamadı")
+    if item_type.is_system:
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="Sistem türleri silinemez")
+    await db.delete(item_type)
+    await db.flush()
+
+
 async def get_item_types(user_id: uuid.UUID, db: AsyncSession) -> list:
     result = await db.execute(
         select(ItemType)
