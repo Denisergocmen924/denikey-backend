@@ -1,13 +1,13 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.db.database import get_db
-from app.schemas.user import UserRegister, UserLogin, UserResponse, TokenResponse
+from app.schemas.user import UserRegister, UserLogin, UserResponse, TokenResponse, UserProfileUpdate
 from app.services.user_service import (
     register_user, login_user, verify_email, verify_device,
     resend_verification, forgot_password, reset_password,
-    change_email_request, change_email_confirm,
+    change_email_request, change_email_confirm, update_profile,
 )
 from app.core.dependencies import get_current_user
 from app.core.security import verify_refresh_token, create_access_token, create_refresh_token
@@ -15,6 +15,8 @@ from app.models.user import User
 from app.db.database import get_db
 from sqlalchemy import select
 import uuid
+import os
+import shutil
 from pydantic import BaseModel
 from typing import Optional
 
@@ -200,3 +202,73 @@ async def confirm_email_change_endpoint(
 ):
     await change_email_confirm(db, str(current_user.id), data.code, data.new_email)
     return {"message": "E-posta adresiniz başarıyla güncellendi"}
+
+
+@router.put("/profile")
+async def update_profile_endpoint(
+    data: UserProfileUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    user = await update_profile(db, current_user, username=data.username, full_name=data.full_name, gender=data.gender)
+    return {
+        "id": str(user.id),
+        "username": user.username,
+        "email": user.email,
+        "full_name": user.full_name,
+        "avatar_url": user.avatar_url,
+        "gender": user.gender,
+    }
+
+
+@router.post("/profile/avatar")
+async def upload_avatar_endpoint(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    allowed = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=400, detail="Desteklenmeyen dosya türü. JPEG, PNG veya WebP yükleyin.")
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
+    filename = f"{current_user.id}.{ext}"
+    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "uploads", "avatars")
+    os.makedirs(uploads_dir, exist_ok=True)
+    file_path = os.path.join(uploads_dir, filename)
+
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    avatar_url = f"/uploads/avatars/{filename}"
+    user = await update_profile(db, current_user, avatar_url=avatar_url)
+    return {"avatar_url": user.avatar_url}
+
+
+@router.get("/profile")
+async def get_profile_endpoint(
+    current_user: User = Depends(get_current_user),
+):
+    return {
+        "id": str(current_user.id),
+        "username": current_user.username,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "avatar_url": current_user.avatar_url,
+        "gender": current_user.gender,
+    }
+
+
+@router.delete("/profile/avatar")
+async def delete_avatar_endpoint(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.avatar_url:
+        uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "uploads", "avatars")
+        file_path = os.path.join(uploads_dir, os.path.basename(current_user.avatar_url))
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        current_user.avatar_url = None
+        await db.flush()
+    return {"message": "Profil fotoğrafı silindi"}

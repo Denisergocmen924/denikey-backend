@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # Resend (e-posta)
     RESEND_API_KEY: str
 
+    # Admin paneli
+    ADMIN_SECRET_KEY: str = "denikey-admin-2024"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

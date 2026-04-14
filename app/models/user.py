@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, Integer, DateTime, func
+from sqlalchemy import Column, String, Boolean, Integer, DateTime, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from app.db.database import Base
@@ -14,7 +14,8 @@ class User(Base):
     password_hash = Column(String(255), nullable=False)
     encryption_key_salt = Column(String(255), nullable=False)
     full_name = Column(String(100), nullable=True)
-    avatar_url = Column(String(500), nullable=True)
+    avatar_url = Column(Text, nullable=True)
+    gender = Column(String(10), nullable=True)
     preferred_language = Column(String(10), default="tr")
     preferred_theme = Column(String(20), default="system")
     is_verified = Column(Boolean, default=False)

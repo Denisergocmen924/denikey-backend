@@ -43,6 +43,7 @@ async def register_user(db: AsyncSession, data: UserRegister, ip_address: str = 
         email=data.email,
         phone=data.phone,
         full_name=data.full_name,
+        gender=data.gender,
         password_hash=password_hash,
         encryption_key_salt=data.encryption_key_salt,
         is_verified=False,
@@ -224,6 +225,30 @@ async def change_email_confirm(db: AsyncSession, user_id: str, code: str, new_em
     user.email = new_email
     await db.flush()
     await create_audit_log(db=db, user_id=user_id, action="email_changed", status="success")
+
+
+async def update_profile(
+    db: AsyncSession,
+    user: User,
+    username: str = None,
+    full_name: str = None,
+    avatar_url: str = None,
+    gender: str = None,
+) -> User:
+    if username and username != user.username:
+        result = await db.execute(select(User).where(User.username == username))
+        if result.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Bu kullanıcı adı zaten kullanılıyor")
+        user.username = username
+    if full_name is not None:
+        user.full_name = full_name
+    if avatar_url is not None:
+        user.avatar_url = avatar_url
+    if gender is not None:
+        user.gender = gender
+    await db.flush()
+    await db.refresh(user)
+    return user
 
 
 async def resend_verification(db: AsyncSession, user_id: str):

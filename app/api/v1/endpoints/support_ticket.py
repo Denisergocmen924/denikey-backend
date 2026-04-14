@@ -12,7 +12,7 @@ from app.services.support_ticket_service import (
 )
 from typing import List
 
-router = APIRouter(prefix="/support", tags=["Support Tickets"])
+router = APIRouter(prefix="/support-ticket", tags=["Support Tickets"])
 
 
 @router.post("/", response_model=SupportTicketResponse)

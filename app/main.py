@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
+import os
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -30,6 +32,11 @@ app.add_middleware(
 
 app.include_router(router)
 
+# Statik dosyalar (yüklenen avatarlar)
+_uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+os.makedirs(os.path.join(_uploads_dir, "avatars"), exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=_uploads_dir), name="uploads")
+
 @app.get("/")
 async def root():
     return {"message": "DeniKey API çalışıyor", "version": settings.APP_VERSION}
@@ -37,3 +44,9 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_panel():
+    html_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "admin.html")
+    with open(html_path, "r", encoding="utf-8") as f:
+        return f.read()

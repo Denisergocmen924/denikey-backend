@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeniKey Admin</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --purple: #534AB7;
+    --purple-dark: #3d3690;
+    --purple-light: #ede9ff;
+    --bg: #f4f5f9;
+    --card: #ffffff;
+    --border: #e2e4ec;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --open: #2563eb;
+    --open-bg: #dbeafe;
+    --progress: #d97706;
+    --progress-bg: #fef3c7;
+    --closed: #16a34a;
+    --closed-bg: #dcfce7;
+    --high: #dc2626;
+    --high-bg: #fee2e2;
+    --normal: #6b7280;
+    --normal-bg: #f3f4f6;
+    --low: #0891b2;
+    --low-bg: #cffafe;
+  }
+
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* LOGIN */
+  #login-screen {
+    display: flex; align-items: center; justify-content: center; min-height: 100vh;
+    background: linear-gradient(135deg, #1a1040 0%, #534AB7 100%);
+  }
+  .login-box {
+    background: white; border-radius: 16px; padding: 48px 40px; width: 360px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  }
+  .login-logo { text-align: center; margin-bottom: 32px; }
+  .login-logo h1 { font-size: 28px; font-weight: 800; color: var(--purple); }
+  .login-logo p { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .login-box input {
+    width: 100%; padding: 12px 16px; border: 2px solid var(--border); border-radius: 10px;
+    font-size: 15px; outline: none; transition: border-color .2s;
+  }
+  .login-box input:focus { border-color: var(--purple); }
+  .login-box button {
+    width: 100%; padding: 13px; background: var(--purple); color: white; border: none;
+    border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 12px;
+    transition: background .2s;
+  }
+  .login-box button:hover { background: var(--purple-dark); }
+  .login-error { color: #dc2626; font-size: 13px; margin-top: 8px; text-align: center; display: none; }
+
+  /* MAIN */
+  #main-screen { display: none; }
+
+  /* HEADER */
+  header {
+    background: var(--purple); color: white; padding: 0 32px;
+    height: 60px; display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(83,74,183,.3);
+  }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header span { font-size: 13px; opacity: .7; }
+  .logout-btn {
+    background: rgba(255,255,255,.15); border: none; color: white; padding: 7px 16px;
+    border-radius: 8px; cursor: pointer; font-size: 13px; transition: background .2s;
+  }
+  .logout-btn:hover { background: rgba(255,255,255,.25); }
+
+  /* LAYOUT */
+  .layout { display: flex; height: calc(100vh - 60px); }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 260px; background: var(--card); border-right: 1px solid var(--border);
+    padding: 24px 16px; overflow-y: auto; flex-shrink: 0;
+  }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--bg); border-radius: 10px; padding: 12px;
+    text-align: center; border: 1px solid var(--border);
+  }
+  .stat-card .num { font-size: 22px; font-weight: 700; color: var(--purple); }
+  .stat-card .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .stat-card.open .num { color: var(--open); }
+  .stat-card.progress .num { color: var(--progress); }
+  .stat-card.closed .num { color: var(--closed); }
+
+  .filter-title { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .8px; text-transform: uppercase; margin-bottom: 8px; }
+  .filter-btn {
+    width: 100%; text-align: left; padding: 9px 12px; border: none; background: none;
+    border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--text); transition: background .15s;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .filter-btn:hover { background: var(--bg); }
+  .filter-btn.active { background: var(--purple-light); color: var(--purple); font-weight: 600; }
+  .filter-count {
+    font-size: 12px; background: var(--border); color: var(--muted);
+    padding: 1px 7px; border-radius: 10px;
+  }
+  .filter-btn.active .filter-count { background: var(--purple); color: white; }
+
+  /* TICKET LIST */
+  .list-panel { flex: 1; overflow-y: auto; padding: 24px; }
+  .list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .list-header h2 { font-size: 18px; font-weight: 700; }
+  .refresh-btn {
+    background: none; border: 1px solid var(--border); padding: 7px 14px;
+    border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all .2s;
+  }
+  .refresh-btn:hover { border-color: var(--purple); color: var(--purple); }
+
+  .ticket-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 20px; margin-bottom: 10px; cursor: pointer; transition: all .2s;
+    border-left: 4px solid transparent;
+  }
+  .ticket-card:hover { border-color: var(--purple); box-shadow: 0 4px 12px rgba(83,74,183,.1); }
+  .ticket-card.selected { border-left-color: var(--purple); background: var(--purple-light); }
+
+  .tc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+  .tc-subject { font-size: 15px; font-weight: 600; flex: 1; }
+  .tc-badges { display: flex; gap: 6px; flex-shrink: 0; }
+  .badge {
+    font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
+    white-space: nowrap;
+  }
+  .badge.open { background: var(--open-bg); color: var(--open); }
+  .badge.in_progress { background: var(--progress-bg); color: var(--progress); }
+  .badge.closed { background: var(--closed-bg); color: var(--closed); }
+  .badge.high { background: var(--high-bg); color: var(--high); }
+  .badge.normal { background: var(--normal-bg); color: var(--normal); }
+  .badge.low { background: var(--low-bg); color: var(--low); }
+  .badge.cat { background: #f3e8ff; color: #7c3aed; }
+  .badge.replied { background: #dcfce7; color: #16a34a; }
+
+  .tc-meta { margin-top: 6px; font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  .tc-preview { margin-top: 8px; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* DETAIL PANEL */
+  .detail-panel {
+    width: 440px; background: var(--card); border-left: 1px solid var(--border);
+    overflow-y: auto; flex-shrink: 0; display: none; flex-direction: column;
+  }
+  .detail-panel.open { display: flex; }
+
+  .detail-header {
+    padding: 20px 24px 16px; border-bottom: 1px solid var(--border); position: sticky; top: 0;
+    background: var(--card); z-index: 10;
+  }
+  .detail-header h3 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
+  .detail-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  .detail-body { padding: 20px 24px; flex: 1; }
+  .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .info-row .key { color: var(--muted); }
+  .info-row .val { font-weight: 500; }
+
+  .section-title { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .8px; text-transform: uppercase; margin: 20px 0 8px; }
+  .message-box {
+    background: var(--bg); border-radius: 10px; padding: 14px; font-size: 14px;
+    line-height: 1.6; white-space: pre-wrap; border: 1px solid var(--border);
+  }
+
+  .admin-reply-box {
+    background: #f0fdf4; border-radius: 10px; padding: 14px; font-size: 14px;
+    line-height: 1.6; white-space: pre-wrap; border: 1px solid #bbf7d0; color: #166534;
+  }
+
+  .detail-footer {
+    padding: 20px 24px; border-top: 1px solid var(--border);
+    background: var(--card); position: sticky; bottom: 0;
+  }
+  .reply-textarea {
+    width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px;
+    font-size: 14px; font-family: inherit; resize: vertical; min-height: 90px; outline: none;
+    transition: border-color .2s;
+  }
+  .reply-textarea:focus { border-color: var(--purple); }
+
+  .footer-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .btn {
+    padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+    border: none; cursor: pointer; transition: all .2s;
+  }
+  .btn-primary { background: var(--purple); color: white; flex: 1; }
+  .btn-primary:hover { background: var(--purple-dark); }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-success { background: #16a34a; color: white; }
+  .btn-success:hover { background: #15803d; }
+  .btn-outline { background: none; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { border-color: var(--purple); color: var(--purple); }
+
+  .status-row { display: flex; gap: 6px; margin-top: 12px; }
+  .status-chip {
+    flex: 1; padding: 7px 8px; border-radius: 8px; font-size: 12px; font-weight: 600;
+    border: 2px solid transparent; cursor: pointer; text-align: center; transition: all .2s;
+  }
+  .status-chip.open { background: var(--open-bg); color: var(--open); }
+  .status-chip.open.active, .status-chip.open:hover { border-color: var(--open); }
+  .status-chip.in_progress { background: var(--progress-bg); color: var(--progress); }
+  .status-chip.in_progress.active, .status-chip.in_progress:hover { border-color: var(--progress); }
+  .status-chip.closed { background: var(--closed-bg); color: var(--closed); }
+  .status-chip.closed.active, .status-chip.closed:hover { border-color: var(--closed); }
+
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: #1a1a2e; color: white;
+    padding: 12px 20px; border-radius: 10px; font-size: 14px; z-index: 9999;
+    opacity: 0; transition: opacity .3s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #dc2626; }
+
+  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+  .close-detail {
+    position: absolute; right: 16px; top: 16px; background: none; border: none;
+    font-size: 20px; cursor: pointer; color: var(--muted); line-height: 1;
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <h1>DeniKey</h1>
+      <p>Admin Paneli</p>
+    </div>
+    <input type="password" id="admin-key-input" placeholder="Admin anahtarı" autocomplete="off">
+    <button onclick="doLogin()">Giriş Yap</button>
+    <div class="login-error" id="login-error">Hatalı anahtar</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main-screen">
+  <header>
+    <h1>DeniKey Admin</h1>
+    <span id="header-sub">Destek Talepleri</span>
+    <button class="logout-btn" onclick="logout()">Çıkış</button>
+  </header>
+
+  <div class="layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="num" id="stat-total">—</div>
+          <div class="lbl">Toplam</div>
+        </div>
+        <div class="stat-card open">
+          <div class="num" id="stat-open">—</div>
+          <div class="lbl">Açık</div>
+        </div>
+        <div class="stat-card progress">
+          <div class="num" id="stat-progress">—</div>
+          <div class="lbl">İşlemde</div>
+        </div>
+        <div class="stat-card closed">
+          <div class="num" id="stat-closed">—</div>
+          <div class="lbl">Kapalı</div>
+        </div>
+      </div>
+
+      <div class="filter-title">Filtre</div>
+      <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">
+        Tümü <span class="filter-count" id="fc-all">0</span>
+      </button>
+      <button class="filter-btn" data-filter="open" onclick="setFilter('open', this)">
+        Açık <span class="filter-count" id="fc-open">0</span>
+      </button>
+      <button class="filter-btn" data-filter="in_progress" onclick="setFilter('in_progress', this)">
+        İşlemde <span class="filter-count" id="fc-progress">0</span>
+      </button>
+      <button class="filter-btn" data-filter="closed" onclick="setFilter('closed', this)">
+        Kapalı <span class="filter-count" id="fc-closed">0</span>
+      </button>
+    </div>
+
+    <!-- TICKET LIST -->
+    <div class="list-panel">
+      <div class="list-header">
+        <h2 id="list-title">Tüm Talepler</h2>
+        <button class="refresh-btn" onclick="loadTickets()">↻ Yenile</button>
+      </div>
+      <div id="ticket-list"></div>
+    </div>
+
+    <!-- DETAIL PANEL -->
+    <div class="detail-panel" id="detail-panel">
+      <div class="detail-header">
+        <button class="close-detail" onclick="closeDetail()">✕</button>
+        <h3 id="d-subject">—</h3>
+        <div class="detail-badges" id="d-badges"></div>
+      </div>
+      <div class="detail-body">
+        <div class="info-row"><span class="key">Kullanıcı</span><span class="val" id="d-email">—</span></div>
+        <div class="info-row"><span class="key">Kategori</span><span class="val" id="d-category">—</span></div>
+        <div class="info-row"><span class="key">Öncelik</span><span class="val" id="d-priority">—</span></div>
+        <div class="info-row"><span class="key">Tarih</span><span class="val" id="d-date">—</span></div>
+        <div class="info-row"><span class="key">Yanıt tarihi</span><span class="val" id="d-replied">—</span></div>
+
+        <div class="section-title">Mesaj</div>
+        <div class="message-box" id="d-message">—</div>
+
+        <div id="d-reply-section" style="display:none">
+          <div class="section-title">Önceki Yanıt</div>
+          <div class="admin-reply-box" id="d-reply-text">—</div>
+        </div>
+      </div>
+      <div class="detail-footer">
+        <textarea class="reply-textarea" id="reply-textarea" placeholder="Kullanıcıya yanıtınızı yazın..."></textarea>
+        <div class="footer-actions">
+          <button class="btn btn-primary" onclick="sendReply(false)" id="reply-btn">Yanıt Gönder</button>
+          <button class="btn btn-success" onclick="sendReply(true)" title="Yanıtla ve kapat">✓ Gönder & Kapat</button>
+        </div>
+        <div class="status-row">
+          <div class="status-chip open" onclick="changeStatus('open')">Açık</div>
+          <div class="status-chip in_progress" onclick="changeStatus('in_progress')">İşlemde</div>
+          <div class="status-chip closed" onclick="changeStatus('closed')">Kapalı</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://127.0.0.1:8000/api/v1';
+let adminKey = '';
+let tickets = [];
+let currentFilter = 'all';
+let selectedId = null;
+
+const CAT_MAP = { bug: 'Hata', suggestion: 'Öneri', other: 'Diğer' };
+const PRI_MAP = { low: 'Düşük', normal: 'Normal', high: 'Yüksek' };
+const STATUS_MAP = { open: 'Açık', in_progress: 'İşlemde', closed: 'Kapalı' };
+
+// --- AUTH ---
+async function doLogin() {
+  const key = document.getElementById('admin-key-input').value.trim();
+  if (!key) return;
+  try {
+    const r = await fetch(`${API}/admin/tickets/stats`, { headers: { 'X-Admin-Key': key } });
+    if (!r.ok) throw new Error();
+    adminKey = key;
+    localStorage.setItem('dk_admin_key', key);
+    showMain();
+  } catch {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+
+function logout() {
+  adminKey = '';
+  localStorage.removeItem('dk_admin_key');
+  document.getElementById('main-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+document.getElementById('admin-key-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// --- INIT ---
+async function showMain() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-screen').style.display = 'block';
+  await loadStats();
+  await loadTickets();
+}
+
+async function loadStats() {
+  try {
+    const r = await apiFetch('/admin/tickets/stats');
+    const s = await r.json();
+    document.getElementById('stat-total').textContent = s.total;
+    document.getElementById('stat-open').textContent = s.open;
+    document.getElementById('stat-progress').textContent = s.in_progress;
+    document.getElementById('stat-closed').textContent = s.closed;
+    document.getElementById('fc-all').textContent = s.total;
+    document.getElementById('fc-open').textContent = s.open;
+    document.getElementById('fc-progress').textContent = s.in_progress;
+    document.getElementById('fc-closed').textContent = s.closed;
+  } catch {}
+}
+
+async function loadTickets() {
+  const url = currentFilter === 'all' ? '/admin/tickets' : `/admin/tickets?status_filter=${currentFilter}`;
+  try {
+    const r = await apiFetch(url);
+    tickets = await r.json();
+    renderList();
+  } catch {
+    showToast('Talepler yüklenemedi', true);
+  }
+}
+
+// --- FILTER ---
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const titles = { all: 'Tüm Talepler', open: 'Açık Talepler', in_progress: 'İşlemdeki Talepler', closed: 'Kapalı Talepler' };
+  document.getElementById('list-title').textContent = titles[f];
+  closeDetail();
+  loadTickets();
+}
+
+// --- RENDER LIST ---
+function renderList() {
+  const el = document.getElementById('ticket-list');
+  if (!tickets.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div>Bu filtre için talep yok</div></div>';
+    return;
+  }
+  el.innerHTML = tickets.map(t => `
+    <div class="ticket-card ${t.id === selectedId ? 'selected' : ''}" onclick="selectTicket('${t.id}')">
+      <div class="tc-top">
+        <div class="tc-subject">${esc(t.subject)}</div>
+        <div class="tc-badges">
+          <span class="badge ${t.status}">${STATUS_MAP[t.status] || t.status}</span>
+          <span class="badge ${t.priority}">${PRI_MAP[t.priority] || t.priority}</span>
+          ${t.admin_reply ? '<span class="badge replied">✓ Yanıtlandı</span>' : ''}
+        </div>
+      </div>
+      <div class="tc-meta">
+        <span>👤 ${esc(t.user_email)}</span>
+        <span class="badge cat">${CAT_MAP[t.category] || t.category}</span>
+        <span>${formatDate(t.created_at)}</span>
+      </div>
+      <div class="tc-preview">${esc(t.message)}</div>
+    </div>
+  `).join('');
+}
+
+// --- DETAIL ---
+function selectTicket(id) {
+  selectedId = id;
+  const t = tickets.find(x => x.id === id);
+  if (!t) return;
+  renderList();
+
+  document.getElementById('d-subject').textContent = t.subject;
+  document.getElementById('d-email').textContent = t.user_email;
+  document.getElementById('d-category').textContent = CAT_MAP[t.category] || t.category;
+  document.getElementById('d-priority').textContent = PRI_MAP[t.priority] || t.priority;
+  document.getElementById('d-date').textContent = formatDate(t.created_at);
+  document.getElementById('d-replied').textContent = t.replied_at ? formatDate(t.replied_at) : '—';
+  document.getElementById('d-message').textContent = t.message;
+
+  document.getElementById('d-badges').innerHTML = `
+    <span class="badge ${t.status}">${STATUS_MAP[t.status] || t.status}</span>
+    <span class="badge ${t.priority}">${PRI_MAP[t.priority] || t.priority}</span>
+    <span class="badge cat">${CAT_MAP[t.category] || t.category}</span>
+  `;
+
+  const replySection = document.getElementById('d-reply-section');
+  if (t.admin_reply) {
+    replySection.style.display = 'block';
+    document.getElementById('d-reply-text').textContent = t.admin_reply;
+    document.getElementById('reply-textarea').value = t.admin_reply;
+  } else {
+    replySection.style.display = 'none';
+    document.getElementById('reply-textarea').value = '';
+  }
+
+  // Status chips
+  document.querySelectorAll('.status-chip').forEach(c => {
+    c.classList.toggle('active', c.classList.contains(t.status));
+  });
+
+  document.getElementById('detail-panel').classList.add('open');
+}
+
+function closeDetail() {
+  selectedId = null;
+  document.getElementById('detail-panel').classList.remove('open');
+  renderList();
+}
+
+// --- ACTIONS ---
+async function sendReply(closeAfter) {
+  const reply = document.getElementById('reply-textarea').value.trim();
+  if (!reply) { showToast('Yanıt boş olamaz', true); return; }
+  if (!selectedId) return;
+
+  const btn = document.getElementById('reply-btn');
+  btn.disabled = true;
+  btn.textContent = 'Gönderiliyor...';
+  try {
+    const r = await apiFetch(`/admin/tickets/${selectedId}/reply`, 'POST', { reply, close_after: closeAfter });
+    if (!r.ok) throw new Error();
+    const updated = await r.json();
+    updateTicket(updated);
+    showToast(closeAfter ? 'Yanıt gönderildi ve talep kapatıldı ✓' : 'Yanıt gönderildi ✓');
+    selectTicket(selectedId);
+  } catch {
+    showToast('Gönderilemedi', true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Yanıt Gönder';
+  }
+}
+
+async function changeStatus(newStatus) {
+  if (!selectedId) return;
+  try {
+    const r = await apiFetch(`/admin/tickets/${selectedId}/status`, 'PATCH', { status: newStatus });
+    if (!r.ok) throw new Error();
+    const updated = await r.json();
+    updateTicket(updated);
+    showToast('Durum güncellendi');
+    selectTicket(selectedId);
+    loadStats();
+  } catch {
+    showToast('Güncellenemedi', true);
+  }
+}
+
+function updateTicket(updated) {
+  const idx = tickets.findIndex(t => t.id === updated.id);
+  if (idx !== -1) tickets[idx] = updated;
+  renderList();
+}
+
+// --- UTILS ---
+function apiFetch(path, method = 'GET', body = null) {
+  const opts = { method, headers: { 'X-Admin-Key': adminKey, 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  return fetch(`${API}${path}`, opts);
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+let toastTimer;
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = 'toast', 2800);
+}
+
+// --- AUTO LOGIN ---
+window.onload = () => {
+  const saved = localStorage.getItem('dk_admin_key');
+  if (saved) {
+    adminKey = saved;
+    fetch(`${API}/admin/tickets/stats`, { headers: { 'X-Admin-Key': saved } })
+      .then(r => r.ok ? showMain() : null)
+      .catch(() => {});
+  }
+};
+</script>
+</body>
+</html>

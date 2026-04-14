@@ -111,6 +111,28 @@ async def verify_code(
     return True
 
 
+async def send_support_reply(user_email: str, subject: str, reply_text: str) -> bool:
+    try:
+        resend.Emails.send({
+            "from": "onboarding@resend.dev",
+            "to": user_email,
+            "subject": f"DeniKey Destek — {subject}",
+            "html": f"""
+                <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
+                    <h2 style="color: #534AB7;">DeniKey Destek</h2>
+                    <p>Destek talebinize yanıt verildi:</p>
+                    <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; border-left: 4px solid #534AB7; white-space: pre-wrap;">
+                        {reply_text}
+                    </div>
+                    <p style="color: #888; font-size: 12px; margin-top: 16px;">DeniKey Destek Ekibi</p>
+                </div>
+            """,
+        })
+        return True
+    except Exception:
+        return False
+
+
 async def send_email_change_notification(old_email: str) -> bool:
     try:
         resend.Emails.send({
