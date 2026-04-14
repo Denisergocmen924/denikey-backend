@@ -58,7 +58,7 @@ async def register_user(db: AsyncSession, data: UserRegister, ip_address: str = 
     await create_default_categories(user.id, db)
     await create_audit_log(db=db, user_id=str(user.id), action="register", status="success", ip_address=ip_address)
 
-    payload = {"sub": str(user.id), "username": user.username}
+    payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
     token = create_access_token(payload)
     refresh = create_refresh_token(payload)
     return {"user": user, "access_token": token, "refresh_token": refresh, "encryption_key_salt": user.encryption_key_salt}
@@ -80,7 +80,7 @@ async def verify_email(db: AsyncSession, user_id: str, code: str, device_id: str
     if device_id:
         await trust_device(db, user_id, device_id, device_type=device_type, ip_address=ip_address)
 
-    payload = {"sub": str(user.id), "username": user.username}
+    payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
     token = create_access_token(payload)
     refresh = create_refresh_token(payload)
     return {"access_token": token, "refresh_token": refresh, "encryption_key_salt": user.encryption_key_salt}
@@ -99,7 +99,7 @@ async def verify_device(db: AsyncSession, user_id: str, code: str, device_id: st
     await trust_device(db, user_id, device_id, device_type=device_type, ip_address=ip_address)
     await create_audit_log(db=db, user_id=user_id, action="device_verified", status="success", ip_address=ip_address)
 
-    payload = {"sub": str(user.id), "username": user.username}
+    payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
     token = create_access_token(payload)
     refresh = create_refresh_token(payload)
     return {"access_token": token, "refresh_token": refresh, "encryption_key_salt": user.encryption_key_salt}
@@ -144,7 +144,7 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
             }
 
     await create_audit_log(db=db, user_id=str(user.id), action="login_success", status="success", ip_address=ip_address)
-    payload = {"sub": str(user.id), "username": user.username}
+    payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
     token = create_access_token(payload)
     refresh = create_refresh_token(payload)
     return {
@@ -186,7 +186,7 @@ async def reset_password(db: AsyncSession, user_id: str, code: str, new_master_p
 
     await create_audit_log(db=db, user_id=user_id, action="password_reset", status="success")
 
-    payload = {"sub": str(user.id), "username": user.username}
+    payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
     token = create_access_token(payload)
     refresh = create_refresh_token(payload)
     return {"access_token": token, "refresh_token": refresh, "encryption_key_salt": user.encryption_key_salt}
@@ -232,7 +232,6 @@ async def update_profile(
     user: User,
     username: str = None,
     full_name: str = None,
-    avatar_url: str = None,
     gender: str = None,
 ) -> User:
     if username and username != user.username:
@@ -242,13 +241,18 @@ async def update_profile(
         user.username = username
     if full_name is not None:
         user.full_name = full_name
-    if avatar_url is not None:
-        user.avatar_url = avatar_url
     if gender is not None:
         user.gender = gender
     await db.flush()
     await db.refresh(user)
     return user
+
+
+async def logout_user(db: AsyncSession, user: User) -> None:
+    """Token version'ı artırarak mevcut tüm token'ları geçersiz kılar."""
+    user.token_version = (user.token_version or 0) + 1
+    await db.flush()
+    await db.commit()
 
 
 async def resend_verification(db: AsyncSession, user_id: str):

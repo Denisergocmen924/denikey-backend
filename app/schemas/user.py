@@ -45,7 +45,6 @@ class UserResponse(BaseModel):
     email: Optional[str] = None
     phone: Optional[str] = None
     full_name: Optional[str] = None
-    avatar_url: Optional[str] = None
     gender: Optional[str] = None
     preferred_language: str
     preferred_theme: str

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -7,7 +7,7 @@ from app.schemas.user import UserRegister, UserLogin, UserResponse, TokenRespons
 from app.services.user_service import (
     register_user, login_user, verify_email, verify_device,
     resend_verification, forgot_password, reset_password,
-    change_email_request, change_email_confirm, update_profile,
+    change_email_request, change_email_confirm, update_profile, logout_user,
 )
 from app.core.dependencies import get_current_user
 from app.core.security import verify_refresh_token, create_access_token, create_refresh_token
@@ -15,8 +15,6 @@ from app.models.user import User
 from app.db.database import get_db
 from sqlalchemy import select
 import uuid
-import os
-import shutil
 from pydantic import BaseModel
 from typing import Optional
 
@@ -75,7 +73,6 @@ async def register(data: UserRegister, request: Request, db: AsyncSession = Depe
             "email": result["user"].email,
             "phone": result["user"].phone,
             "full_name": result["user"].full_name,
-            "avatar_url": result["user"].avatar_url,
             "preferred_language": result["user"].preferred_language,
             "preferred_theme": result["user"].preferred_theme,
         }
@@ -111,7 +108,6 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
             "email": result["user"].email,
             "phone": result["user"].phone,
             "full_name": result["user"].full_name,
-            "avatar_url": result["user"].avatar_url,
             "preferred_language": result["user"].preferred_language,
             "preferred_theme": result["user"].preferred_theme,
         }
@@ -152,6 +148,7 @@ async def refresh_token(request: Request, data: RefreshTokenRequest, db: AsyncSe
         )
 
     user_id = payload.get("sub")
+    token_version = payload.get("tv")
     result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
     user = result.scalar_one_or_none()
     if not user or user.is_locked:
@@ -160,7 +157,14 @@ async def refresh_token(request: Request, data: RefreshTokenRequest, db: AsyncSe
             detail="Kullanıcı bulunamadı veya hesap kilitli",
         )
 
-    token_payload = {"sub": str(user.id), "username": user.username}
+    # Logout sonrası refresh token geçersizleştirme kontrolü
+    if token_version != user.token_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Oturum sonlandırılmış, lütfen tekrar giriş yapın",
+        )
+
+    token_payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
     new_access = create_access_token(token_payload)
     new_refresh = create_refresh_token(token_payload)
     return {"access_token": new_access, "refresh_token": new_refresh}
@@ -216,33 +220,8 @@ async def update_profile_endpoint(
         "username": user.username,
         "email": user.email,
         "full_name": user.full_name,
-        "avatar_url": user.avatar_url,
         "gender": user.gender,
     }
-
-
-@router.post("/profile/avatar")
-async def upload_avatar_endpoint(
-    file: UploadFile = File(...),
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    allowed = {"image/jpeg", "image/png", "image/webp", "image/gif"}
-    if file.content_type not in allowed:
-        raise HTTPException(status_code=400, detail="Desteklenmeyen dosya türü. JPEG, PNG veya WebP yükleyin.")
-
-    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
-    filename = f"{current_user.id}.{ext}"
-    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "uploads", "avatars")
-    os.makedirs(uploads_dir, exist_ok=True)
-    file_path = os.path.join(uploads_dir, filename)
-
-    with open(file_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
-
-    avatar_url = f"/uploads/avatars/{filename}"
-    user = await update_profile(db, current_user, avatar_url=avatar_url)
-    return {"avatar_url": user.avatar_url}
 
 
 @router.get("/profile")
@@ -254,21 +233,15 @@ async def get_profile_endpoint(
         "username": current_user.username,
         "email": current_user.email,
         "full_name": current_user.full_name,
-        "avatar_url": current_user.avatar_url,
         "gender": current_user.gender,
     }
 
 
-@router.delete("/profile/avatar")
-async def delete_avatar_endpoint(
+@router.post("/logout")
+async def logout_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.avatar_url:
-        uploads_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "uploads", "avatars")
-        file_path = os.path.join(uploads_dir, os.path.basename(current_user.avatar_url))
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        current_user.avatar_url = None
-        await db.flush()
-    return {"message": "Profil fotoğrafı silindi"}
+    """Mevcut tüm access ve refresh token'ları geçersiz kılar."""
+    await logout_user(db, current_user)
+    return {"message": "Başarıyla çıkış yapıldı"}

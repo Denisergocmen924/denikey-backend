@@ -39,6 +39,14 @@ async def get_current_user(
             detail="Kullanıcı bulunamadı"
         )
 
+    # Logout sonrası token geçersizleştirme kontrolü
+    if payload.get("tv") != user.token_version:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Oturum sonlandırılmış, lütfen tekrar giriş yapın",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     if user.is_locked:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
