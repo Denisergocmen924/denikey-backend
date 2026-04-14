@@ -108,8 +108,8 @@ def create_refresh_token(data: dict) -> str:
 
 def verify_access_token(token: str) -> Optional[dict]:
     """
-    JWT token'ı doğrular ve payload'ı döndürür.
-    Geçersiz token'da None döner.
+    JWT access token'ı doğrular ve payload'ı döndürür.
+    Geçersiz token veya refresh token gönderilirse None döner.
     """
     try:
         payload = jwt.decode(
@@ -117,6 +117,9 @@ def verify_access_token(token: str) -> Optional[dict]:
             settings.JWT_SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM]
         )
+        # Refresh token'ın access token gibi kullanılmasını engelle
+        if payload.get("type") != "access":
+            return None
         return payload
     except JWTError:
         return None
@@ -148,8 +151,14 @@ def hash_master_password_for_auth(master_password: str, salt: bytes) -> str:
     Master password'ün sunucuya gönderilecek doğrulama hash'ini üretir.
     Bu hash şifreleme anahtarından FARKLI bir türetmedir.
     Sunucu bu hash'i saklar, asla master password'ü görmez.
+
+    Salt ayrımı: HKDF benzeri yaklaşımla domain separation string'i
+    SHA-256 ile salt'a karıştırılır; böylece şifreleme salt'ı ile
+    auth salt'ı tamamen bağımsız hale gelir.
     """
-    auth_salt = salt + b"_auth"
+    import hashlib
+    # "denikey-auth-v1" domain string'i ile salt'ı karıştırarak bağımsız bir auth salt üret
+    auth_salt = hashlib.sha256(salt + b"denikey-auth-v1").digest()
     auth_hash = hash_secret_raw(
         secret=master_password.encode('utf-8'),
         salt=auth_salt,

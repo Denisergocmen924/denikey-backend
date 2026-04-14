@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     # Uygulama
     APP_NAME: str = "DeniKey"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False  # Production'da kesinlikle False; geliştirme için .env'de DEBUG=True yap
 
     # CORS — production'da sadece izinli origin'ler
     ALLOWED_ORIGINS: List[str] = [
@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     # Resend (e-posta)
     RESEND_API_KEY: str
 
-    # Admin paneli
-    ADMIN_SECRET_KEY: str = "denikey-admin-2024"
+    # Admin paneli — default YOK; .env'de ADMIN_SECRET_KEY tanımlanmazsa uygulama başlamaz
+    ADMIN_SECRET_KEY: str
 
     class Config:
         env_file = ".env"
