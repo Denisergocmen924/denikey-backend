@@ -20,7 +20,7 @@ def derive_encryption_key(master_password: str, salt: bytes) -> bytes:
     key = hash_secret_raw(
         secret=master_password.encode('utf-8'),
         salt=salt,
-        time_cost=2,
+        time_cost=3,
         memory_cost=65536,
         parallelism=2,
         hash_len=32,

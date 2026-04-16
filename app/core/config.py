@@ -7,8 +7,12 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False  # Production'da kesinlikle False; geliştirme için .env'de DEBUG=True yap
 
-    # CORS — mobil uygulama origin göndermez, * açık bırakılır
-    ALLOWED_ORIGINS: List[str] = ["*"]
+    # CORS — mobil istemciler Origin göndermez; web/admin için bilinen domain'ler listelenir
+    ALLOWED_ORIGINS: List[str] = [
+        "https://denikey.website",
+        "https://www.denikey.website",
+        "https://denikey-backend-production.up.railway.app",
+    ]
 
     # Veritabanı
     DATABASE_URL: str
