@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: denikey_backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DEBUG: "False"
+    expose:
+      - "8000"
+    networks:
+      - denikey_net
+
+  nginx:
+    image: nginx:alpine
+    container_name: denikey_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+    depends_on:
+      - app
+    networks:
+      - denikey_net
+
+networks:
+  denikey_net:
+    driver: bridge
