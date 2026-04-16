@@ -7,12 +7,8 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False  # Production'da kesinlikle False; geliştirme için .env'de DEBUG=True yap
 
-    # CORS — production'da sadece izinli origin'ler
-    ALLOWED_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://localhost:8080",
-        "http://127.0.0.1:8000",
-    ]
+    # CORS — mobil uygulama origin göndermez, * açık bırakılır
+    ALLOWED_ORIGINS: List[str] = ["*"]
 
     # Veritabanı
     DATABASE_URL: str
