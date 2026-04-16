@@ -66,7 +66,7 @@ async def send_verification_code(
 
     try:
         resend.Emails.send({
-            "from": "onboarding@resend.dev",
+            "from": "noreply@denikey.website",
             "to": email,
             "subject": subject_map.get(purpose, "DeniKey — Doğrulama kodu"),
             "html": f"""
@@ -114,7 +114,7 @@ async def verify_code(
 async def send_support_reply(user_email: str, subject: str, reply_text: str) -> bool:
     try:
         resend.Emails.send({
-            "from": "onboarding@resend.dev",
+            "from": "noreply@denikey.website",
             "to": user_email,
             "subject": f"DeniKey Destek — {subject}",
             "html": f"""
@@ -136,7 +136,7 @@ async def send_support_reply(user_email: str, subject: str, reply_text: str) -> 
 async def send_email_change_notification(old_email: str) -> bool:
     try:
         resend.Emails.send({
-            "from": "onboarding@resend.dev",
+            "from": "noreply@denikey.website",
             "to": old_email,
             "subject": "DeniKey — E-posta adresiniz değiştirildi",
             "html": """
