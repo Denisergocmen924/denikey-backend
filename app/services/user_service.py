@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from datetime import datetime, timezone, timedelta
 from app.models.user import User
 from app.schemas.user import UserRegister
 from app.core.security import (
@@ -113,7 +114,13 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
 
     if user.is_locked:
-        raise HTTPException(status_code=403, detail="Hesabınız kilitlenmiştir")
+        if user.lock_until and datetime.now(timezone.utc) >= user.lock_until:
+            user.is_locked = False
+            user.failed_attempts = 0
+            user.lock_until = None
+            await db.flush()
+        else:
+            raise HTTPException(status_code=403, detail="Hesabınız kilitlenmiştir")
 
     salt = string_to_salt(user.encryption_key_salt)
     password_hash = hash_master_password_for_auth(master_password, salt)
@@ -122,6 +129,7 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
         user.failed_attempts += 1
         if user.failed_attempts >= 5:
             user.is_locked = True
+            user.lock_until = datetime.now(timezone.utc) + timedelta(minutes=30)
         await db.flush()
         await create_audit_log(db=db, user_id=str(user.id), action="login_failed", status="failed", ip_address=ip_address, extra_data={"attempts": user.failed_attempts})
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")

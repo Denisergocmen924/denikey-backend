@@ -11,12 +11,13 @@ from pydantic import BaseModel
 from datetime import datetime, timezone
 from typing import Optional
 import uuid
+import secrets
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 
 def _require_admin(x_admin_key: str = Header(...)):
-    if x_admin_key != settings.ADMIN_SECRET_KEY:
+    if not secrets.compare_digest(x_admin_key, settings.ADMIN_SECRET_KEY):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Geçersiz admin anahtarı")
 
 

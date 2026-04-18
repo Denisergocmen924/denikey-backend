@@ -115,6 +115,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
 
 
 @router.post("/verify-email")
+@limiter.limit("5/minute")
 async def verify_email_endpoint(data: VerifyEmailRequest, request: Request, db: AsyncSession = Depends(get_db)):
     ip = request.client.host if request.client else None
     result = await verify_email(db, data.user_id, data.code, device_id=data.device_id, device_type=data.device_type, ip_address=ip)
@@ -126,6 +127,7 @@ async def verify_email_endpoint(data: VerifyEmailRequest, request: Request, db: 
 
 
 @router.post("/verify-device")
+@limiter.limit("5/minute")
 async def verify_device_endpoint(data: VerifyDeviceRequest, request: Request, db: AsyncSession = Depends(get_db)):
     ip = request.client.host if request.client else None
     result = await verify_device(db, data.user_id, data.code, data.device_id, device_type=data.device_type, ip_address=ip)
@@ -171,7 +173,8 @@ async def refresh_token(request: Request, data: RefreshTokenRequest, db: AsyncSe
 
 
 @router.post("/resend-verification")
-async def resend_verification_endpoint(data: ResendVerificationRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("3/minute")
+async def resend_verification_endpoint(request: Request, data: ResendVerificationRequest, db: AsyncSession = Depends(get_db)):
     await resend_verification(db, data.user_id)
     return {"message": "Doğrulama kodu tekrar gönderildi"}
 
@@ -184,7 +187,8 @@ async def forgot_password_endpoint(request: Request, data: ForgotPasswordRequest
 
 
 @router.post("/reset-password")
-async def reset_password_endpoint(data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("3/minute")
+async def reset_password_endpoint(request: Request, data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
     return await reset_password(db, data.user_id, data.code, data.new_master_password, data.new_encryption_key_salt)
 
 
