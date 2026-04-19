@@ -263,6 +263,24 @@ async def logout_user(db: AsyncSession, user: User) -> None:
     await db.commit()
 
 
+async def delete_account(db: AsyncSession, user: User, username: str, master_password: str) -> None:
+    if username != user.username:
+        raise HTTPException(status_code=400, detail="Kullanıcı adı hatalı")
+
+    salt = string_to_salt(user.encryption_key_salt)
+    password_hash = hash_master_password_for_auth(master_password, salt)
+    if password_hash != user.password_hash:
+        raise HTTPException(status_code=400, detail="Şifre hatalı")
+
+    user_email = user.email
+    await db.delete(user)
+    await db.flush()
+
+    if user_email:
+        from app.services.email_service import send_account_deletion_notification
+        await send_account_deletion_notification(user_email)
+
+
 async def resend_verification(db: AsyncSession, user_id: str):
     result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
     user = result.scalar_one_or_none()

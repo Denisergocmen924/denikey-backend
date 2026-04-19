@@ -8,6 +8,7 @@ from app.services.user_service import (
     register_user, login_user, verify_email, verify_device,
     resend_verification, forgot_password, reset_password,
     change_email_request, change_email_confirm, update_profile, logout_user,
+    delete_account,
 )
 from app.core.dependencies import get_current_user
 from app.core.security import verify_refresh_token, create_access_token, create_refresh_token
@@ -55,6 +56,10 @@ class ConfirmEmailChangeRequest(BaseModel):
 
 class RefreshTokenRequest(BaseModel):
     refresh_token: str
+
+class DeleteAccountRequest(BaseModel):
+    username: str
+    master_password: str
 
 
 @router.post("/register")
@@ -239,6 +244,16 @@ async def get_profile_endpoint(
         "full_name": current_user.full_name,
         "gender": current_user.gender,
     }
+
+
+@router.delete("/delete-account")
+async def delete_account_endpoint(
+    data: DeleteAccountRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    await delete_account(db, current_user, data.username, data.master_password)
+    return {"message": "Hesabınız kalıcı olarak silindi"}
 
 
 @router.post("/logout")

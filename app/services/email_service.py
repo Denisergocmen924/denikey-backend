@@ -133,6 +133,27 @@ async def send_support_reply(user_email: str, subject: str, reply_text: str) -> 
         return False
 
 
+async def send_account_deletion_notification(email: str) -> bool:
+    try:
+        resend.Emails.send({
+            "from": "noreply@denikey.website",
+            "to": email,
+            "subject": "DeniKey — Hesabınız kalıcı olarak silindi",
+            "html": """
+                <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto;">
+                    <h2 style="color: #534AB7;">DeniKey</h2>
+                    <p>Hesabınız ve hesabınıza ait tüm veriler <b>kalıcı olarak silinmiştir</b>.</p>
+                    <p>DeniKey'i kullandığınız için teşekkür ederiz.</p>
+                    <p>Bu işlemi siz yapmadıysanız lütfen bizimle iletişime geçin.</p>
+                    <p style="color: #888; font-size: 12px;">DeniKey Güvenlik Ekibi</p>
+                </div>
+            """,
+        })
+        return True
+    except Exception:
+        return False
+
+
 async def send_email_change_notification(old_email: str) -> bool:
     try:
         resend.Emails.send({
