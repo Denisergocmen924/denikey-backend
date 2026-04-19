@@ -31,6 +31,7 @@ def _serialize(ticket: SupportTicket, email: str) -> dict:
         "message": ticket.message,
         "priority": ticket.priority,
         "status": ticket.status,
+        "is_archived": ticket.is_archived,
         "admin_reply": ticket.admin_reply,
         "replied_at": ticket.replied_at.isoformat() if ticket.replied_at else None,
         "created_at": ticket.created_at.isoformat() if ticket.created_at else None,
@@ -41,10 +42,13 @@ def _serialize(ticket: SupportTicket, email: str) -> dict:
 @router.get("/tickets")
 async def list_tickets(
     status_filter: Optional[str] = None,
+    show_archived: bool = False,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_admin),
 ):
     query = select(SupportTicket, User.email).join(User, SupportTicket.user_id == User.id)
+    if not show_archived:
+        query = query.where(SupportTicket.is_archived == False)
     if status_filter and status_filter != "all":
         query = query.where(SupportTicket.status == status_filter)
     query = query.order_by(SupportTicket.created_at.desc())
@@ -101,6 +105,32 @@ async def reply_ticket(
         ticket.status = "in_progress"
 
     await send_support_reply(email, ticket.subject, body.reply)
+    await db.commit()
+    await db.refresh(ticket)
+    return _serialize(ticket, email)
+
+
+class ArchiveBody(BaseModel):
+    is_archived: bool
+
+
+@router.patch("/tickets/{ticket_id}/archive")
+async def archive_ticket(
+    ticket_id: str,
+    body: ArchiveBody,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_admin),
+):
+    result = await db.execute(
+        select(SupportTicket, User.email)
+        .join(User, SupportTicket.user_id == User.id)
+        .where(SupportTicket.id == uuid.UUID(ticket_id))
+    )
+    row = result.one_or_none()
+    if not row:
+        raise HTTPException(status_code=404, detail="Ticket bulunamadı")
+    ticket, email = row
+    ticket.is_archived = body.is_archived
     await db.commit()
     await db.refresh(ticket)
     return _serialize(ticket, email)
