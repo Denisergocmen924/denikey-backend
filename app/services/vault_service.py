@@ -14,12 +14,6 @@ import uuid
 
 
 async def create_vault_item(db: AsyncSession, data: VaultItemCreate, current_user: User) -> VaultItem:
-    if data.custom_fields and len(data.custom_fields) > 3:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Bir kayıt için maksimum 3 özel alan eklenebilir"
-        )
-
     item_id = uuid.uuid4()
     vault_item = VaultItem(
         id=item_id,
