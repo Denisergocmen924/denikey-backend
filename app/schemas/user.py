@@ -1,6 +1,5 @@
 from pydantic import BaseModel, field_validator
 from typing import Optional
-import re
 
 class UserRegister(BaseModel):
     username: str
@@ -16,10 +15,9 @@ class UserRegister(BaseModel):
     @field_validator('username')
     @classmethod
     def username_valid(cls, v):
+        v = v.strip()
         if len(v) < 3 or len(v) > 50:
             raise ValueError('Kullanıcı adı 3-50 karakter olmalı')
-        if not re.match(r'^[a-zA-Z0-9_]+$', v):
-            raise ValueError('Kullanıcı adı sadece harf, rakam ve _ içerebilir')
         return v
 
     @field_validator('master_password')
@@ -62,10 +60,9 @@ class UserProfileUpdate(BaseModel):
     def username_valid(cls, v):
         if v is None:
             return v
+        v = v.strip()
         if len(v) < 3 or len(v) > 50:
             raise ValueError('Kullanıcı adı 3-50 karakter olmalı')
-        if not re.match(r'^[a-zA-Z0-9_]+$', v):
-            raise ValueError('Kullanıcı adı sadece harf, rakam ve _ içerebilir')
         return v
 
 class TokenResponse(BaseModel):
