@@ -22,13 +22,22 @@ async def register_user(db: AsyncSession, data: UserRegister, ip_address: str = 
         raise HTTPException(status_code=400, detail="E-posta veya telefon numarası zorunlu")
 
     result = await db.execute(select(User).where(User.username == data.username))
-    if result.scalar_one_or_none():
+    existing_username = result.scalar_one_or_none()
+    if existing_username and existing_username.is_verified:
         raise HTTPException(status_code=400, detail="Bu kullanıcı adı zaten kullanılıyor")
+    if existing_username and not existing_username.is_verified:
+        await db.delete(existing_username)
+        await db.flush()
 
     if data.email:
         result = await db.execute(select(User).where(User.email == data.email))
-        if result.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Bu e-posta zaten kayıtlı")
+        existing = result.scalar_one_or_none()
+        if existing:
+            if existing.is_verified:
+                raise HTTPException(status_code=400, detail="Bu e-posta zaten kayıtlı")
+            # Doğrulanmamış hesabı sil — cascade ile tüm bağlı veriler temizlenir
+            await db.delete(existing)
+            await db.flush()
 
     if data.phone:
         result = await db.execute(select(User).where(User.phone == data.phone))
@@ -109,6 +118,11 @@ async def verify_device(db: AsyncSession, user_id: str, code: str, device_id: st
 async def login_user(db: AsyncSession, username: str, master_password: str, device_id: str = None, device_type: str = None, ip_address: str = None) -> dict:
     result = await db.execute(select(User).where(User.username == username))
     user = result.scalar_one_or_none()
+
+    # Kullanıcı adıyla bulunamazsa e-posta olarak dene
+    if not user:
+        result = await db.execute(select(User).where(User.email == username))
+        user = result.scalar_one_or_none()
 
     if not user:
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
