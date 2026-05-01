@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     # Admin paneli — default YOK; .env'de ADMIN_SECRET_KEY tanımlanmazsa uygulama başlamaz
     ADMIN_SECRET_KEY: str
 
+    # Zorunlu güncelleme — bu versiyonun altındaki istemciler güncellemeye zorlanır
+    MINIMUM_APP_VERSION: str = "1.1.0"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

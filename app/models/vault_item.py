@@ -20,6 +20,7 @@ class VaultItem(Base):
     notes = Column(Text, nullable=True)
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True)
     item_type_id = Column(UUID(as_uuid=True), ForeignKey("item_types.id", ondelete="SET NULL"), nullable=True, index=True)
+    url = Column(String(2048), nullable=True)
     color = Column(String(20), nullable=True)
     icon = Column(String(50), nullable=True)
     is_favorite = Column(Boolean, default=False)

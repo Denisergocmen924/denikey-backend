@@ -29,6 +29,7 @@ class VaultItemCreate(BaseModel):
     encrypted_password: str
     iv: Optional[str] = None
     notes: Optional[str] = None
+    url: Optional[str] = None
     category_id: Optional[str] = None
     item_type_id: Optional[str] = None
     color: Optional[str] = None
@@ -46,6 +47,7 @@ class VaultItemUpdate(BaseModel):
     encrypted_password: Optional[str] = None
     iv: Optional[str] = None
     notes: Optional[str] = None
+    url: Optional[str] = None
     category_id: Optional[str] = None
     item_type_id: Optional[str] = None
     color: Optional[str] = None
@@ -65,6 +67,7 @@ class VaultItemResponse(BaseModel):
     iv: Optional[str] = None
     encryption_version: int
     notes: Optional[str] = None
+    url: Optional[str] = None
     category_id: Optional[str] = None
     item_type_id: Optional[str] = None
     color: Optional[str] = None
