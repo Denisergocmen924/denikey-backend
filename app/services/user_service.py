@@ -12,7 +12,7 @@ from app.core.security import (
 from app.services.audit_log_service import create_audit_log
 from app.services.category_service import create_default_categories
 from app.services.email_service import send_verification_code, verify_code
-from app.services.device_service import is_device_trusted, trust_device
+from app.services.device_service import is_device_trusted, trust_device, update_device_last_active
 from fastapi import HTTPException
 import uuid
 
@@ -96,7 +96,7 @@ async def verify_email(db: AsyncSession, user_id: str, code: str, device_id: str
     return {"access_token": token, "refresh_token": refresh, "encryption_key_salt": user.encryption_key_salt}
 
 
-async def verify_device(db: AsyncSession, user_id: str, code: str, device_id: str, device_type: str = None, ip_address: str = None) -> dict:
+async def verify_device(db: AsyncSession, user_id: str, code: str, device_id: str, device_type: str = None, display_name: str = None, ip_address: str = None) -> dict:
     result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
     user = result.scalar_one_or_none()
     if not user:
@@ -106,16 +106,16 @@ async def verify_device(db: AsyncSession, user_id: str, code: str, device_id: st
     if not is_valid:
         raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş kod")
 
-    await trust_device(db, user_id, device_id, device_type=device_type, ip_address=ip_address)
+    device = await trust_device(db, user_id, device_id, device_type=device_type, display_name=display_name, ip_address=ip_address)
     await create_audit_log(db=db, user_id=user_id, action="device_verified", status="success", ip_address=ip_address)
 
-    payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
+    payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version, "did": device_id}
     token = create_access_token(payload)
     refresh = create_refresh_token(payload)
     return {"access_token": token, "refresh_token": refresh, "encryption_key_salt": user.encryption_key_salt}
 
 
-async def login_user(db: AsyncSession, username: str, master_password: str, device_id: str = None, device_type: str = None, ip_address: str = None) -> dict:
+async def login_user(db: AsyncSession, username: str, master_password: str, device_id: str = None, device_type: str = None, display_name: str = None, ip_address: str = None) -> dict:
     result = await db.execute(select(User).where(User.username == username))
     user = result.scalar_one_or_none()
 
@@ -164,9 +164,11 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
                 "encryption_key_salt": user.encryption_key_salt,
                 "needs_device_verification": True,
             }
+        # Güvenilir cihaz — last_active_at güncelle
+        await update_device_last_active(db, str(user.id), device_id)
 
     await create_audit_log(db=db, user_id=str(user.id), action="login_success", status="success", ip_address=ip_address)
-    payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
+    payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version, "did": device_id or ""}
     token = create_access_token(payload)
     refresh = create_refresh_token(payload)
     return {

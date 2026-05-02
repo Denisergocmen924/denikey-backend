@@ -36,6 +36,7 @@ class UserLogin(BaseModel):
     master_password: str
     device_id: Optional[str] = None
     device_type: Optional[str] = None
+    device_name: Optional[str] = None  # okunabilir isim: "Samsung Galaxy S21"
 
 class UserResponse(BaseModel):
     id: str

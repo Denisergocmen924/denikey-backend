@@ -5,6 +5,7 @@ from sqlalchemy import select
 from app.db.database import get_db
 from app.core.security import verify_access_token
 from app.models.user import User
+from app.services.device_service import update_device_last_active, get_device_status
 
 security = HTTPBearer()
 
@@ -52,5 +53,17 @@ async def get_current_user(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Hesabınız kilitlenmiştir"
         )
+
+    # Cihaz durumu kontrolü
+    device_id = payload.get("did")
+    if device_id:
+        device_status = await get_device_status(db, user_id, device_id)
+        if device_status in ("revoked", "banned"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Bu cihazın oturumu sonlandırılmış, lütfen tekrar giriş yapın",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        await update_device_last_active(db, user_id, device_id)
 
     return user
