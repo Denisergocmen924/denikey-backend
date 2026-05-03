@@ -90,7 +90,7 @@ async def verify_email(db: AsyncSession, user_id: str, code: str, device_id: str
     if device_id:
         await trust_device(db, user_id, device_id, device_type=device_type, ip_address=ip_address)
 
-    payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
+    payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version, "did": device_id or ""}
     token = create_access_token(payload)
     refresh = create_refresh_token(payload)
     return {"access_token": token, "refresh_token": refresh, "encryption_key_salt": user.encryption_key_salt}
