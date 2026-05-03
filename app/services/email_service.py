@@ -1,3 +1,4 @@
+import asyncio
 import resend
 import random
 import string
@@ -13,6 +14,15 @@ resend.api_key = settings.RESEND_API_KEY
 
 def _generate_code() -> str:
     return ''.join(random.choices(string.digits, k=6))
+
+
+async def _fire_resend(payload: dict) -> None:
+    """resend.Emails.send() senkron bir HTTP çağrısıdır; thread pool'da çalıştırarak
+    asyncio event loop'unu bloke etmekten kaçınır. Hata olursa sessizce geçilir."""
+    try:
+        await asyncio.to_thread(resend.Emails.send, payload)
+    except Exception:
+        pass
 
 
 async def send_verification_code(
@@ -49,7 +59,7 @@ async def send_verification_code(
     db.add(verification)
     await db.flush()
 
-    # Mail gönder
+    # Mail arka planda gönderilir; kayıt/giriş yanıtını bloke etmez.
     subject_map = {
         "register": "DeniKey — Hesabınızı doğrulayın",
         "new_device": "DeniKey — Yeni cihaz girişi",
@@ -64,25 +74,22 @@ async def send_verification_code(
         "email_change": f"E-posta değişikliği için doğrulama kodunuz: <b>{code}</b><br>Bu kod 10 dakika geçerlidir.",
     }
 
-    try:
-        resend.Emails.send({
-            "from": "noreply@denikey.website",
-            "to": email,
-            "subject": subject_map.get(purpose, "DeniKey — Doğrulama kodu"),
-            "html": f"""
-                <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto;">
-                    <h2 style="color: #534AB7;">DeniKey</h2>
-                    <p>{body_map.get(purpose, f'Doğrulama kodunuz: <b>{code}</b>')}</p>
-                    <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #534AB7;">
-                        {code}
-                    </div>
-                    <p style="color: #888; font-size: 12px; margin-top: 16px;">Bu maili siz istemediyseniz dikkate almayın.</p>
+    asyncio.create_task(_fire_resend({
+        "from": "noreply@denikey.website",
+        "to": email,
+        "subject": subject_map.get(purpose, "DeniKey — Doğrulama kodu"),
+        "html": f"""
+            <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto;">
+                <h2 style="color: #534AB7;">DeniKey</h2>
+                <p>{body_map.get(purpose, f'Doğrulama kodunuz: <b>{code}</b>')}</p>
+                <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #534AB7;">
+                    {code}
                 </div>
-            """,
-        })
-        return True
-    except Exception:
-        return False
+                <p style="color: #888; font-size: 12px; margin-top: 16px;">Bu maili siz istemediyseniz dikkate almayın.</p>
+            </div>
+        """,
+    }))
+    return True
 
 
 async def verify_code(
@@ -113,7 +120,7 @@ async def verify_code(
 
 async def send_support_reply(user_email: str, subject: str, reply_text: str) -> bool:
     try:
-        resend.Emails.send({
+        await asyncio.to_thread(resend.Emails.send, {
             "from": "noreply@denikey.website",
             "to": user_email,
             "subject": f"DeniKey Destek — {subject}",
@@ -135,7 +142,7 @@ async def send_support_reply(user_email: str, subject: str, reply_text: str) -> 
 
 async def send_account_deletion_notification(email: str) -> bool:
     try:
-        resend.Emails.send({
+        await asyncio.to_thread(resend.Emails.send, {
             "from": "noreply@denikey.website",
             "to": email,
             "subject": "DeniKey — Hesabınız kalıcı olarak silindi",
@@ -156,7 +163,7 @@ async def send_account_deletion_notification(email: str) -> bool:
 
 async def send_email_change_notification(old_email: str) -> bool:
     try:
-        resend.Emails.send({
+        await asyncio.to_thread(resend.Emails.send, {
             "from": "noreply@denikey.website",
             "to": old_email,
             "subject": "DeniKey — E-posta adresiniz değiştirildi",
