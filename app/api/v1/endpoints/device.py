@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
-from app.services.device_service import get_user_devices, revoke_device, ban_device
+from app.services.device_service import get_user_devices, revoke_device, ban_device, unban_device
 
 router = APIRouter(prefix="/devices", tags=["Devices"])
 
@@ -53,3 +53,16 @@ async def ban_device_endpoint(
         raise HTTPException(status_code=404, detail="Cihaz bulunamadı")
     await db.commit()
     return {"message": "Cihaz yasaklandı"}
+
+
+@router.patch("/{device_id}/unban")
+async def unban_device_endpoint(
+    device_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    success = await unban_device(db, str(current_user.id), device_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Cihaz bulunamadı")
+    await db.commit()
+    return {"message": "Cihaz yasağı kaldırıldı"}

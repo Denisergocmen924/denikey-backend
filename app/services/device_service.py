@@ -128,3 +128,20 @@ async def ban_device(db: AsyncSession, user_id: str, device_id: str) -> bool:
     device.is_trusted = False
     await db.flush()
     return True
+
+
+async def unban_device(db: AsyncSession, user_id: str, device_id: str) -> bool:
+    """Cihaz yasağını kaldırır — durumu active, is_trusted=True yapar."""
+    result = await db.execute(
+        select(Device).where(
+            Device.user_id == uuid.UUID(user_id),
+            Device.id == uuid.UUID(device_id),
+        )
+    )
+    device = result.scalar_one_or_none()
+    if not device:
+        return False
+    device.status = "active"
+    device.is_trusted = True
+    await db.flush()
+    return True

@@ -173,7 +173,17 @@ async def refresh_token(request: Request, data: RefreshTokenRequest, db: AsyncSe
             detail="Oturum sonlandırılmış, lütfen tekrar giriş yapın",
         )
 
-    token_payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
+    device_id = payload.get("did", "")
+    if device_id:
+        from app.services.device_service import get_device_status
+        device_status = await get_device_status(db, user_id, device_id)
+        if device_status in ("revoked", "banned"):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Bu cihazın oturumu sonlandırılmış, lütfen tekrar giriş yapın",
+            )
+
+    token_payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version, "did": device_id}
     new_access = create_access_token(token_payload)
     new_refresh = create_refresh_token(token_payload)
     return {"access_token": new_access, "refresh_token": new_refresh}

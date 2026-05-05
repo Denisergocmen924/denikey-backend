@@ -12,7 +12,7 @@ from app.core.security import (
 from app.services.audit_log_service import create_audit_log
 from app.services.category_service import create_default_categories
 from app.services.email_service import send_verification_code, verify_code
-from app.services.device_service import is_device_trusted, trust_device, update_device_last_active
+from app.services.device_service import is_device_trusted, trust_device, update_device_last_active, get_device_status
 from fastapi import HTTPException
 import uuid
 
@@ -153,6 +153,12 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
 
     # Cihaz kontrolü
     if device_id:
+        device_status = await get_device_status(db, str(user.id), device_id)
+        if device_status == "banned":
+            raise HTTPException(
+                status_code=403,
+                detail="Bu hesap için bu cihaz kullanılamıyor"
+            )
         trusted = await is_device_trusted(db, str(user.id), device_id)
         if not trusted:
             if user.email:
