@@ -9,7 +9,7 @@ from app.models.user import User
 from app.services.password_history_service import record_password_change
 from app.services.audit_log_service import create_audit_log
 from fastapi import HTTPException, status
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 
 
@@ -165,7 +165,7 @@ async def delete_vault_item(db: AsyncSession, item_id: str, current_user: User) 
         id=uuid.uuid4(),
         user_id=current_user.id,
         vault_item_id=item.id,
-        permanent_delete_at=datetime.utcnow() + timedelta(days=7)
+        permanent_delete_at=datetime.now(timezone.utc) + timedelta(days=7)
     )
     db.add(trash)
     await db.flush()
