@@ -202,17 +202,6 @@ async def get_item_types(user_id: uuid.UUID, db: AsyncSession) -> list:
         .order_by(ItemType.sort_order)
     )
     item_types = result.scalars().all()
-
-    # Kullanıcının hiç item type'ı yoksa varsayılanları oluştur
-    if not item_types:
-        await create_default_item_types(user_id, db)
-        result = await db.execute(
-            select(ItemType)
-            .options(selectinload(ItemType.fields))
-            .where(ItemType.user_id == user_id)
-            .order_by(ItemType.sort_order)
-        )
-        item_types = result.scalars().all()
     return [
         {
             "id": str(it.id),

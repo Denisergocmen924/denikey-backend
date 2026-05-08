@@ -10,7 +10,7 @@ from app.core.security import (
     create_refresh_token,
 )
 from app.services.audit_log_service import create_audit_log
-from app.services.category_service import create_default_categories
+from app.services.category_service import create_system_category
 from app.services.email_service import send_verification_code, verify_code
 from app.services.device_service import is_device_trusted, trust_device, update_device_last_active, get_device_status
 from fastapi import HTTPException
@@ -65,7 +65,7 @@ async def register_user(db: AsyncSession, data: UserRegister, ip_address: str = 
     if data.email:
         await send_verification_code(db, str(user.id), data.email, "register")
 
-    await create_default_categories(user.id, db)
+    await create_system_category(user.id, db)
     await create_audit_log(db=db, user_id=str(user.id), action="register", status="success", ip_address=ip_address)
 
     payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
