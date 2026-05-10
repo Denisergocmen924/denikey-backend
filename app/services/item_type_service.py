@@ -176,6 +176,57 @@ async def create_item_type(user_id: uuid.UUID, data: dict, db: AsyncSession) -> 
     }
 
 
+async def update_item_type(user_id: uuid.UUID, item_type_id: str, data: dict, db: AsyncSession) -> dict:
+    from fastapi import HTTPException
+    result = await db.execute(
+        select(ItemType)
+        .options(selectinload(ItemType.fields))
+        .where(ItemType.id == uuid.UUID(item_type_id), ItemType.user_id == user_id)
+    )
+    item_type = result.scalar_one_or_none()
+    if not item_type:
+        raise HTTPException(status_code=404, detail="Tür bulunamadı")
+    if item_type.is_system:
+        raise HTTPException(status_code=403, detail="Sistem türleri düzenlenemez")
+    if "name_tr" in data:
+        item_type.name_tr = data["name_tr"]
+        item_type.name_en = data.get("name_en", data["name_tr"])
+    if "icon" in data:
+        item_type.icon = data["icon"]
+    if "color" in data:
+        item_type.color = data["color"]
+    if data.get("fields"):
+        field_map = {str(f.id): f for f in item_type.fields}
+        for field_update in data["fields"]:
+            fid = field_update["id"]
+            fname = field_update["field_name"].strip()
+            if fid in field_map and fname:
+                field_map[fid].field_name_tr = fname
+                field_map[fid].field_name_en = fname
+    await db.flush()
+    await db.refresh(item_type)
+    return {
+        "id": str(item_type.id),
+        "name_tr": item_type.name_tr,
+        "name_en": item_type.name_en,
+        "icon": item_type.icon,
+        "color": item_type.color,
+        "is_system": item_type.is_system,
+        "sort_order": item_type.sort_order,
+        "fields": [
+            {
+                "id": str(f.id),
+                "field_name_tr": f.field_name_tr,
+                "field_name_en": f.field_name_en,
+                "field_type": f.field_type,
+                "is_required": f.is_required,
+                "sort_order": f.sort_order,
+            }
+            for f in sorted(item_type.fields, key=lambda x: x.sort_order)
+        ],
+    }
+
+
 async def delete_item_type(user_id: uuid.UUID, item_type_id: str, db: AsyncSession):
     from fastapi import HTTPException
     from fastapi import status as http_status
