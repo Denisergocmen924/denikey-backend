@@ -47,11 +47,17 @@ class FieldNameUpdate(BaseModel):
     field_name: str
 
 
+class NewFieldCreate(BaseModel):
+    field_name: str
+    field_type: str = "text"
+
+
 class ItemTypeUpdate(BaseModel):
     name_tr: Optional[str] = None
     icon: Optional[str] = None
     color: Optional[str] = None
     fields: Optional[list[FieldNameUpdate]] = None
+    new_fields: Optional[list[NewFieldCreate]] = None
 
 
 @router.patch("/{item_type_id}")

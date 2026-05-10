@@ -203,6 +203,20 @@ async def update_item_type(user_id: uuid.UUID, item_type_id: str, data: dict, db
             if fid in field_map and fname:
                 field_map[fid].field_name_tr = fname
                 field_map[fid].field_name_en = fname
+    if data.get("new_fields"):
+        next_order = max((f.sort_order for f in item_type.fields), default=-1) + 1
+        for i, new_field in enumerate(data["new_fields"]):
+            fname = new_field["field_name"].strip()
+            if fname:
+                db.add(ItemTypeField(
+                    id=uuid.uuid4(),
+                    item_type_id=item_type.id,
+                    field_name_tr=fname,
+                    field_name_en=fname,
+                    field_type=new_field.get("field_type", "text"),
+                    is_required=False,
+                    sort_order=next_order + i,
+                ))
     await db.flush()
     await db.refresh(item_type)
     return {
