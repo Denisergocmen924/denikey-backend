@@ -9,6 +9,7 @@ from app.services.support_ticket_service import (
     get_my_tickets,
     get_ticket,
     close_ticket,
+    delete_ticket,
 )
 from typing import List
 
@@ -48,3 +49,12 @@ async def close_support_ticket(
     db: AsyncSession = Depends(get_db),
 ):
     return await close_ticket(db, ticket_id, current_user)
+
+
+@router.delete("/{ticket_id}", status_code=204)
+async def delete_support_ticket(
+    ticket_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await delete_ticket(db, ticket_id, current_user)

@@ -51,6 +51,21 @@ async def get_ticket(db: AsyncSession, ticket_id: str, current_user: User) -> di
     return _serialize(ticket)
 
 
+async def delete_ticket(db: AsyncSession, ticket_id: str, current_user: User) -> None:
+    result = await db.execute(
+        select(SupportTicket)
+        .where(
+            SupportTicket.id == uuid.UUID(ticket_id),
+            SupportTicket.user_id == current_user.id,
+        )
+    )
+    ticket = result.scalar_one_or_none()
+    if not ticket:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ticket bulunamadı")
+    await db.delete(ticket)
+    await db.flush()
+
+
 async def close_ticket(db: AsyncSession, ticket_id: str, current_user: User) -> dict:
     result = await db.execute(
         select(SupportTicket)
