@@ -23,5 +23,7 @@ class User(Base):
     failed_attempts = Column(Integer, default=0)
     token_version = Column(Integer, default=0, nullable=False, server_default="0")
     lock_until = Column(DateTime(timezone=True), nullable=True)
+    totp_secret = Column(Text, nullable=True)
+    totp_enabled = Column(Boolean, default=False, nullable=False, server_default="false")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

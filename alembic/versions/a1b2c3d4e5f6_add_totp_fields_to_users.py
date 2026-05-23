@@ -1,0 +1,25 @@
+"""add_totp_fields_to_users
+
+Revision ID: a1b2c3d4e5f6
+Revises: fb120d5f99d2
+Create Date: 2026-05-23
+
+"""
+from typing import Sequence, Union
+from alembic import op
+import sqlalchemy as sa
+
+revision: str = 'a1b2c3d4e5f6'
+down_revision: Union[str, Sequence[str], None] = 'fb120d5f99d2'
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    op.add_column('users', sa.Column('totp_secret', sa.Text(), nullable=True))
+    op.add_column('users', sa.Column('totp_enabled', sa.Boolean(), nullable=False, server_default='false'))
+
+
+def downgrade() -> None:
+    op.drop_column('users', 'totp_enabled')
+    op.drop_column('users', 'totp_secret')

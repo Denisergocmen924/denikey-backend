@@ -62,6 +62,17 @@ class DeleteAccountRequest(BaseModel):
     username: str
     master_password: str
 
+class TotpEnableRequest(BaseModel):
+    secret: str
+    code: str
+
+class TotpDisableRequest(BaseModel):
+    master_password: str
+
+class TotpVerifyLoginRequest(BaseModel):
+    temp_token: str
+    code: str
+
 
 @router.post("/register")
 @limiter.limit("5/minute")
@@ -101,11 +112,19 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
     if result.get("needs_device_verification"):
         return {
             "needs_device_verification": True,
+            "needs_totp": False,
             "user_id": str(result["user"].id),
             "email": result["user"].email,
         }
+    if result.get("needs_totp"):
+        return {
+            "needs_device_verification": False,
+            "needs_totp": True,
+            "totp_temp_token": result["totp_temp_token"],
+        }
     return {
         "needs_device_verification": False,
+        "needs_totp": False,
         "access_token": result["access_token"],
         "refresh_token": result["refresh_token"],
         "encryption_key_salt": result["encryption_key_salt"],
@@ -276,3 +295,121 @@ async def logout_endpoint(
     """Mevcut tüm access ve refresh token'ları geçersiz kılar."""
     await logout_user(db, current_user)
     return {"message": "Başarıyla çıkış yapıldı"}
+
+
+# ── TOTP Endpoint'leri ─────────────────────────────────────────────────────────
+
+@router.get("/totp/status")
+async def totp_status(current_user: User = Depends(get_current_user)):
+    return {"totp_enabled": current_user.totp_enabled}
+
+
+@router.get("/totp/setup")
+async def totp_setup(current_user: User = Depends(get_current_user)):
+    from app.services.totp_service import generate_totp_setup
+    if current_user.totp_enabled:
+        raise HTTPException(status_code=400, detail="Authenticator Koruması zaten aktif")
+    return generate_totp_setup(current_user.username)
+
+
+@router.post("/totp/enable")
+async def totp_enable(
+    data: TotpEnableRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.services.totp_service import enable_totp
+    await enable_totp(db, current_user, data.secret, data.code)
+    await db.commit()
+    return {"message": "Authenticator Koruması etkinleştirildi"}
+
+
+@router.post("/totp/disable")
+async def totp_disable(
+    data: TotpDisableRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    from app.services.totp_service import disable_totp
+    await disable_totp(db, current_user, data.master_password)
+    await db.commit()
+    return {"message": "Authenticator Koruması devre dışı bırakıldı"}
+
+
+@router.post("/totp/verify-login")
+@limiter.limit("10/minute")
+async def totp_verify_login(
+    data: TotpVerifyLoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    from app.services.totp_service import verify_totp_temp_token, verify_totp_code
+    from app.services.device_service import (
+        is_device_trusted, get_device_status,
+        trust_device, update_device_last_active,
+    )
+    from app.services.audit_log_service import create_audit_log
+
+    payload = verify_totp_temp_token(data.temp_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Geçersiz veya süresi dolmuş oturum")
+
+    user_id = payload["sub"]
+    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    user = result.scalar_one_or_none()
+    if not user or not user.totp_enabled or not user.totp_secret:
+        raise HTTPException(status_code=401, detail="Geçersiz istek")
+
+    if not verify_totp_code(user.totp_secret, data.code):
+        await create_audit_log(
+            db=db, user_id=user_id,
+            action="login_totp_failed", status="failed",
+            ip_address=request.client.host if request.client else None,
+        )
+        raise HTTPException(status_code=401, detail="Geçersiz doğrulama kodu")
+
+    device_id = payload.get("did") or None
+    device_type = payload.get("dtype") or None
+    display_name = payload.get("dname") or None
+
+    if device_id:
+        device_status = await get_device_status(db, user_id, device_id)
+        if device_status == "banned":
+            raise HTTPException(status_code=403, detail="Bu hesap için bu cihaz kullanılamıyor")
+        trusted = await is_device_trusted(db, user_id, device_id)
+        if not trusted:
+            if user.email:
+                from app.services.email_service import send_verification_code
+                await send_verification_code(db, user_id, user.email, "new_device")
+            await create_audit_log(
+                db=db, user_id=user_id,
+                action="login_new_device", status="pending",
+                ip_address=request.client.host if request.client else None,
+            )
+            return {
+                "needs_device_verification": True,
+                "needs_totp": False,
+                "user_id": user_id,
+                "email": user.email,
+            }
+        await update_device_last_active(db, user_id, device_id)
+
+    ip = request.client.host if request.client else None
+    await create_audit_log(db=db, user_id=user_id, action="login_success", status="success", ip_address=ip)
+    token_payload = {"sub": user_id, "username": user.username, "tv": user.token_version, "did": device_id or ""}
+    return {
+        "needs_device_verification": False,
+        "needs_totp": False,
+        "access_token": create_access_token(token_payload),
+        "refresh_token": create_refresh_token(token_payload),
+        "encryption_key_salt": user.encryption_key_salt,
+        "user": {
+            "id": user_id,
+            "username": user.username,
+            "email": user.email,
+            "phone": user.phone,
+            "full_name": user.full_name,
+            "preferred_language": user.preferred_language,
+            "preferred_theme": user.preferred_theme,
+        },
+    }

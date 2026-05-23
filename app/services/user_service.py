@@ -173,6 +173,18 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
         # Güvenilir cihaz — last_active_at güncelle
         await update_device_last_active(db, str(user.id), device_id)
 
+    # TOTP aktifse geçici token döndür — kullanıcı kod girmeli
+    if user.totp_enabled:
+        from app.services.totp_service import create_totp_temp_token
+        temp_token = create_totp_temp_token(str(user.id), device_id, device_type, display_name)
+        await create_audit_log(db=db, user_id=str(user.id), action="login_totp_pending", status="pending", ip_address=ip_address)
+        return {
+            "user": user,
+            "needs_totp": True,
+            "totp_temp_token": temp_token,
+            "needs_device_verification": False,
+        }
+
     await create_audit_log(db=db, user_id=str(user.id), action="login_success", status="success", ip_address=ip_address)
     payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version, "did": device_id or ""}
     token = create_access_token(payload)
@@ -183,6 +195,7 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
         "refresh_token": refresh,
         "encryption_key_salt": user.encryption_key_salt,
         "needs_device_verification": False,
+        "needs_totp": False,
     }
 
 
