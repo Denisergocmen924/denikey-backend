@@ -1,6 +1,6 @@
 import asyncio
 import resend
-import random
+import secrets
 import string
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,7 @@ resend.api_key = settings.RESEND_API_KEY
 
 
 def _generate_code() -> str:
-    return ''.join(random.choices(string.digits, k=6))
+    return ''.join(secrets.choice(string.digits) for _ in range(6))
 
 
 async def _fire_resend(payload: dict) -> None:
@@ -99,10 +99,10 @@ async def verify_code(
     purpose: str,
 ) -> bool:
     now = datetime.now(timezone.utc)
+    # Kod değeri olmadan sorgula — yanlış denemede failed_attempts artırabilmek için
     result = await db.execute(
         select(VerificationCode).where(
             VerificationCode.user_id == uuid.UUID(user_id),
-            VerificationCode.code == code,
             VerificationCode.purpose == purpose,
             VerificationCode.is_used == False,
             VerificationCode.expires_at > now,
@@ -111,6 +111,14 @@ async def verify_code(
     verification = result.scalar_one_or_none()
 
     if not verification:
+        return False
+
+    if verification.code != code:
+        verification.failed_attempts += 1
+        # 3 yanlış denemede kodu geçersiz kıl
+        if verification.failed_attempts >= 3:
+            verification.is_used = True
+        await db.flush()
         return False
 
     verification.is_used = True

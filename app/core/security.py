@@ -142,26 +142,49 @@ def verify_refresh_token(token: str) -> Optional[dict]:
         return None
 
 
+def create_email_verify_token(user_id: str, purpose: str = "register") -> str:
+    """
+    Kayıt ve doğrulanmamış giriş sonrası kısa ömürlü token.
+    Yalnızca /auth/resend-verification endpoint'inde geçerlidir (15 dk).
+    """
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    payload = {
+        "sub": user_id,
+        "type": "email_verify",
+        "purpose": purpose,
+        "exp": expire,
+    }
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def verify_email_verify_token(token: str) -> Optional[dict]:
+    """email_verify token'ını doğrular, payload döndürür."""
+    try:
+        payload = jwt.decode(
+            token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
+        )
+        if payload.get("type") != "email_verify":
+            return None
+        return payload
+    except JWTError:
+        return None
+
+
+
 # ============================================================
 # DOĞRULAMA HASH — Master Password Sunucu Tarafı Doğrulama
 # ============================================================
 
-def hash_master_password_for_auth(master_password: str, salt: bytes) -> str:
-    """
-    Master password'ün sunucuya gönderilecek doğrulama hash'ini üretir.
-    Bu hash şifreleme anahtarından FARKLI bir türetmedir.
-    Sunucu bu hash'i saklar, asla master password'ü görmez.
-
-    Salt ayrımı: HKDF benzeri yaklaşımla domain separation string'i
-    SHA-256 ile salt'a karıştırılır; böylece şifreleme salt'ı ile
-    auth salt'ı tamamen bağımsız hale gelir.
-    """
+def _auth_salt(salt: bytes) -> bytes:
     import hashlib
-    # "denikey-auth-v1" domain string'i ile salt'ı karıştırarak bağımsız bir auth salt üret
-    auth_salt = hashlib.sha256(salt + b"denikey-auth-v1").digest()
+    return hashlib.sha256(salt + b"denikey-auth-v1").digest()
+
+
+def hash_master_password_for_auth_v1(master_password: str, salt: bytes) -> str:
+    """Eski zayıf parametreler — yalnızca mevcut hash'leri doğrulamak için kullanılır."""
     auth_hash = hash_secret_raw(
         secret=master_password.encode('utf-8'),
-        salt=auth_salt,
+        salt=_auth_salt(salt),
         time_cost=1,
         memory_cost=32768,
         parallelism=1,
@@ -169,3 +192,22 @@ def hash_master_password_for_auth(master_password: str, salt: bytes) -> str:
         type=Type.ID
     )
     return base64.b64encode(auth_hash).decode('utf-8')
+
+
+def hash_master_password_for_auth_v2(master_password: str, salt: bytes) -> str:
+    """Güçlü parametreler — Flutter şifreleme ile aynı güç."""
+    auth_hash = hash_secret_raw(
+        secret=master_password.encode('utf-8'),
+        salt=_auth_salt(salt),
+        time_cost=3,
+        memory_cost=65536,
+        parallelism=2,
+        hash_len=32,
+        type=Type.ID
+    )
+    return base64.b64encode(auth_hash).decode('utf-8')
+
+
+def hash_master_password_for_auth(master_password: str, salt: bytes) -> str:
+    """Yeni kayıt ve şifre sıfırlama için her zaman v2 kullanılır."""
+    return hash_master_password_for_auth_v2(master_password, salt)

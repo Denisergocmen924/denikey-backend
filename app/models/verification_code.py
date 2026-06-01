@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Boolean, ForeignKey, func
+from sqlalchemy import Column, String, DateTime, Boolean, Integer, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
 from app.db.database import Base
@@ -12,5 +12,6 @@ class VerificationCode(Base):
     code = Column(String(6), nullable=False)
     purpose = Column(String(50), nullable=False)  # register, new_device, forgot_password, email_change
     is_used = Column(Boolean, default=False)
+    failed_attempts = Column(Integer, default=0, nullable=False)
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

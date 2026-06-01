@@ -10,7 +10,7 @@ from app.services.user_service import (
     change_email_request, change_email_confirm, update_profile, logout_user,
     delete_account,
 )
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_current_device_id
 from app.core.security import verify_refresh_token, create_access_token, create_refresh_token
 from app.models.user import User
 from app.db.database import get_db
@@ -30,7 +30,7 @@ class VerifyEmailRequest(BaseModel):
     device_type: Optional[str] = None
 
 class ResendVerificationRequest(BaseModel):
-    user_id: str
+    temp_token: str
 
 class VerifyDeviceRequest(BaseModel):
     user_id: str
@@ -43,7 +43,7 @@ class ForgotPasswordRequest(BaseModel):
     email: str
 
 class ResetPasswordRequest(BaseModel):
-    user_id: str
+    email: str
     code: str
     new_master_password: str
     new_encryption_key_salt: str
@@ -73,6 +73,12 @@ class TotpVerifyLoginRequest(BaseModel):
     temp_token: str
     code: str
 
+class TotpTrustDurationRequest(BaseModel):
+    duration_seconds: int
+
+class TotpVerifyUnlockRequest(BaseModel):
+    code: str
+
 
 @router.post("/register")
 @limiter.limit("5/minute")
@@ -84,6 +90,7 @@ async def register(data: UserRegister, request: Request, db: AsyncSession = Depe
         "refresh_token": result["refresh_token"],
         "token_type": "bearer",
         "encryption_key_salt": result["encryption_key_salt"],
+        "email_verify_token": result["email_verify_token"],
         "user": {
             "id": str(result["user"].id),
             "username": result["user"].username,
@@ -109,12 +116,20 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
         display_name=data.device_name,
         ip_address=ip,
     )
+    if result.get("needs_email_verification"):
+        return {
+            "needs_email_verification": True,
+            "user_id": str(result["user"].id),
+            "email": result["user"].email,
+            "email_verify_token": result["email_verify_token"],
+        }
     if result.get("needs_device_verification"):
         return {
             "needs_device_verification": True,
             "needs_totp": False,
             "user_id": str(result["user"].id),
             "email": result["user"].email,
+            "email_verify_token": result["email_verify_token"],
         }
     if result.get("needs_totp"):
         return {
@@ -211,21 +226,27 @@ async def refresh_token(request: Request, data: RefreshTokenRequest, db: AsyncSe
 @router.post("/resend-verification")
 @limiter.limit("3/minute")
 async def resend_verification_endpoint(request: Request, data: ResendVerificationRequest, db: AsyncSession = Depends(get_db)):
-    await resend_verification(db, data.user_id)
+    from app.core.security import verify_email_verify_token
+    payload = verify_email_verify_token(data.temp_token)
+    if not payload:
+        raise HTTPException(status_code=401, detail="Geçersiz veya süresi dolmuş token")
+    user_id = payload["sub"]
+    purpose = payload.get("purpose", "register")
+    await resend_verification(db, user_id, purpose)
     return {"message": "Doğrulama kodu tekrar gönderildi"}
 
 
 @router.post("/forgot-password")
 @limiter.limit("3/minute")
 async def forgot_password_endpoint(request: Request, data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
-    result = await forgot_password(db, data.email)
-    return {"message": "E-posta adresiniz kayıtlıysa kod gönderildi", "user_id": result.get("user_id")}
+    await forgot_password(db, data.email)
+    return {"message": "E-posta adresiniz kayıtlıysa kod gönderildi"}
 
 
 @router.post("/reset-password")
 @limiter.limit("3/minute")
 async def reset_password_endpoint(request: Request, data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
-    return await reset_password(db, data.user_id, data.code, data.new_master_password, data.new_encryption_key_salt)
+    return await reset_password(db, data.email, data.code, data.new_master_password, data.new_encryption_key_salt)
 
 
 @router.post("/change-email")
@@ -301,7 +322,66 @@ async def logout_endpoint(
 
 @router.get("/totp/status")
 async def totp_status(current_user: User = Depends(get_current_user)):
-    return {"totp_enabled": current_user.totp_enabled}
+    return {
+        "totp_enabled": current_user.totp_enabled,
+        "totp_trust_duration_seconds": current_user.totp_trust_duration_seconds,
+    }
+
+
+@router.put("/totp/trust-duration")
+@limiter.limit("10/minute")
+async def totp_set_trust_duration(
+    data: TotpTrustDurationRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    device_id: str = Depends(get_current_device_id),
+    db: AsyncSession = Depends(get_db),
+):
+    allowed = {0, 43200, 86400, 604800, 2592000, 5184000}
+    if data.duration_seconds not in allowed:
+        raise HTTPException(status_code=400, detail="Geçersiz süre değeri")
+    current_user.totp_trust_duration_seconds = data.duration_seconds
+    # "Her seferinde" seçilince mevcut cihazın TOTP trust'ını hemen temizle
+    if data.duration_seconds == 0 and device_id:
+        from app.services.device_service import set_totp_trust
+        await set_totp_trust(db, str(current_user.id), device_id, 0)
+    await db.flush()
+    return {"totp_trust_duration_seconds": current_user.totp_trust_duration_seconds}
+
+
+@router.get("/totp/trust-check")
+async def totp_trust_check(
+    current_user: User = Depends(get_current_user),
+    device_id: str = Depends(get_current_device_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Mevcut cihazın TOTP trust durumunu döndürür."""
+    if not current_user.totp_enabled:
+        return {"totp_enabled": False, "trust_valid": True}
+    from app.services.device_service import is_totp_trust_valid
+    trust_valid = bool(device_id and await is_totp_trust_valid(db, str(current_user.id), device_id))
+    return {"totp_enabled": True, "trust_valid": trust_valid}
+
+
+@router.post("/totp/verify-unlock")
+@limiter.limit("10/minute")
+async def totp_verify_unlock(
+    data: TotpVerifyUnlockRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    device_id: str = Depends(get_current_device_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Uygulama açılışında TOTP doğrular ve trust set eder."""
+    from app.services.totp_service import verify_totp_code
+    if not current_user.totp_enabled or not current_user.totp_secret:
+        raise HTTPException(status_code=400, detail="TOTP etkin değil")
+    if not verify_totp_code(current_user.totp_secret, data.code):
+        raise HTTPException(status_code=400, detail="Geçersiz TOTP kodu")
+    if device_id:
+        from app.services.device_service import set_totp_trust
+        await set_totp_trust(db, str(current_user.id), device_id, current_user.totp_trust_duration_seconds)
+    return {"success": True}
 
 
 @router.get("/totp/setup")
@@ -346,7 +426,7 @@ async def totp_verify_login(
     from app.services.totp_service import verify_totp_temp_token, verify_totp_code
     from app.services.device_service import (
         is_device_trusted, get_device_status,
-        trust_device, update_device_last_active,
+        trust_device, update_device_last_active, set_totp_trust,
     )
     from app.services.audit_log_service import create_audit_log
 
@@ -366,7 +446,7 @@ async def totp_verify_login(
             action="login_totp_failed", status="failed",
             ip_address=request.client.host if request.client else None,
         )
-        raise HTTPException(status_code=401, detail="Geçersiz doğrulama kodu")
+        raise HTTPException(status_code=400, detail="Geçersiz doğrulama kodu")
 
     device_id = payload.get("did") or None
     device_type = payload.get("dtype") or None
@@ -393,6 +473,8 @@ async def totp_verify_login(
                 "email": user.email,
             }
         await update_device_last_active(db, user_id, device_id)
+        if user.totp_trust_duration_seconds > 0:
+            await set_totp_trust(db, user_id, device_id, user.totp_trust_duration_seconds)
 
     ip = request.client.host if request.client else None
     await create_audit_log(db=db, user_id=user_id, action="login_success", status="success", ip_address=ip)

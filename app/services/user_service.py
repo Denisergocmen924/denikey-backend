@@ -6,13 +6,19 @@ from app.schemas.user import UserRegister
 from app.core.security import (
     string_to_salt,
     hash_master_password_for_auth,
+    hash_master_password_for_auth_v1,
+    hash_master_password_for_auth_v2,
     create_access_token,
     create_refresh_token,
+    create_email_verify_token,
 )
 from app.services.audit_log_service import create_audit_log
 from app.services.category_service import create_system_category
 from app.services.email_service import send_verification_code, verify_code
-from app.services.device_service import is_device_trusted, trust_device, update_device_last_active, get_device_status
+from app.services.device_service import (
+    is_device_trusted, trust_device, update_device_last_active,
+    get_device_status, is_totp_trust_valid, set_totp_trust,
+)
 from fastapi import HTTPException
 import uuid
 
@@ -57,6 +63,7 @@ async def register_user(db: AsyncSession, data: UserRegister, ip_address: str = 
         password_hash=password_hash,
         encryption_key_salt=data.encryption_key_salt,
         is_verified=False,
+        auth_hash_version=2,
     )
     db.add(user)
     await db.flush()
@@ -71,7 +78,14 @@ async def register_user(db: AsyncSession, data: UserRegister, ip_address: str = 
     payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
     token = create_access_token(payload)
     refresh = create_refresh_token(payload)
-    return {"user": user, "access_token": token, "refresh_token": refresh, "encryption_key_salt": user.encryption_key_salt}
+    email_verify_token = create_email_verify_token(str(user.id), "register")
+    return {
+        "user": user,
+        "access_token": token,
+        "refresh_token": refresh,
+        "encryption_key_salt": user.encryption_key_salt,
+        "email_verify_token": email_verify_token,
+    }
 
 
 async def verify_email(db: AsyncSession, user_id: str, code: str, device_id: str = None, device_type: str = None, ip_address: str = None) -> dict:
@@ -109,6 +123,10 @@ async def verify_device(db: AsyncSession, user_id: str, code: str, device_id: st
     device = await trust_device(db, user_id, device_id, device_type=device_type, display_name=display_name, ip_address=ip_address)
     await create_audit_log(db=db, user_id=user_id, action="device_verified", status="success", ip_address=ip_address)
 
+    # E-posta doğrulaması 2FA yerine geçer — TOTP trust süresini başlat
+    if user.totp_enabled and user.totp_trust_duration_seconds > 0:
+        await set_totp_trust(db, user_id, device_id, user.totp_trust_duration_seconds)
+
     payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version, "did": device_id}
     token = create_access_token(payload)
     refresh = create_refresh_token(payload)
@@ -137,7 +155,8 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
             raise HTTPException(status_code=403, detail="Hesabınız kilitlenmiştir")
 
     salt = string_to_salt(user.encryption_key_salt)
-    password_hash = hash_master_password_for_auth(master_password, salt)
+    hash_fn = hash_master_password_for_auth_v1 if (user.auth_hash_version or 1) == 1 else hash_master_password_for_auth_v2
+    password_hash = hash_fn(master_password, salt)
 
     if password_hash != user.password_hash:
         user.failed_attempts += 1
@@ -149,7 +168,19 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
 
     user.failed_attempts = 0
+    if (user.auth_hash_version or 1) == 1:
+        user.password_hash = hash_master_password_for_auth_v2(master_password, salt)
+        user.auth_hash_version = 2
     await db.flush()
+
+    if not user.is_verified:
+        if user.email:
+            await send_verification_code(db, str(user.id), user.email, "register")
+        return {
+            "user": user,
+            "needs_email_verification": True,
+            "email_verify_token": create_email_verify_token(str(user.id), "register"),
+        }
 
     # Cihaz kontrolü
     if device_id:
@@ -169,21 +200,24 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
                 "access_token": None,
                 "encryption_key_salt": user.encryption_key_salt,
                 "needs_device_verification": True,
+                "email_verify_token": create_email_verify_token(str(user.id), "new_device"),
             }
         # Güvenilir cihaz — last_active_at güncelle
         await update_device_last_active(db, str(user.id), device_id)
 
-    # TOTP aktifse geçici token döndür — kullanıcı kod girmeli
+    # TOTP aktifse cihaz güven süresi dolmamışsa atla, dolmuşsa kod iste
     if user.totp_enabled:
-        from app.services.totp_service import create_totp_temp_token
-        temp_token = create_totp_temp_token(str(user.id), device_id, device_type, display_name)
-        await create_audit_log(db=db, user_id=str(user.id), action="login_totp_pending", status="pending", ip_address=ip_address)
-        return {
-            "user": user,
-            "needs_totp": True,
-            "totp_temp_token": temp_token,
-            "needs_device_verification": False,
-        }
+        totp_trusted = device_id and await is_totp_trust_valid(db, str(user.id), device_id)
+        if not totp_trusted:
+            from app.services.totp_service import create_totp_temp_token
+            temp_token = create_totp_temp_token(str(user.id), device_id, device_type, display_name)
+            await create_audit_log(db=db, user_id=str(user.id), action="login_totp_pending", status="pending", ip_address=ip_address)
+            return {
+                "user": user,
+                "needs_totp": True,
+                "totp_temp_token": temp_token,
+                "needs_device_verification": False,
+            }
 
     await create_audit_log(db=db, user_id=str(user.id), action="login_success", status="success", ip_address=ip_address)
     payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version, "did": device_id or ""}
@@ -210,21 +244,23 @@ async def forgot_password(db: AsyncSession, email: str) -> dict:
     return {"user_id": str(user.id), "sent": True}
 
 
-async def reset_password(db: AsyncSession, user_id: str, code: str, new_master_password: str, new_encryption_key_salt: str) -> dict:
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+async def reset_password(db: AsyncSession, email: str, code: str, new_master_password: str, new_encryption_key_salt: str) -> dict:
+    result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş kod")
 
-    is_valid = await verify_code(db, user_id, code, "forgot_password")
+    is_valid = await verify_code(db, str(user.id), code, "forgot_password")
     if not is_valid:
         raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş kod")
 
     salt = string_to_salt(new_encryption_key_salt)
-    user.password_hash = hash_master_password_for_auth(new_master_password, salt)
+    user.password_hash = hash_master_password_for_auth_v2(new_master_password, salt)
+    user.auth_hash_version = 2
     user.encryption_key_salt = new_encryption_key_salt
     user.failed_attempts = 0
     user.is_locked = False
+    user.token_version = (user.token_version or 0) + 1
     await db.flush()
 
     await create_audit_log(db=db, user_id=user_id, action="password_reset", status="success")
@@ -266,6 +302,7 @@ async def change_email_confirm(db: AsyncSession, user_id: str, code: str, new_em
         raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş kod")
 
     user.email = new_email
+    user.token_version = (user.token_version or 0) + 1
     await db.flush()
     await create_audit_log(db=db, user_id=user_id, action="email_changed", status="success")
 
@@ -303,7 +340,8 @@ async def delete_account(db: AsyncSession, user: User, username: str, master_pas
         raise HTTPException(status_code=400, detail="Kullanıcı adı hatalı")
 
     salt = string_to_salt(user.encryption_key_salt)
-    password_hash = hash_master_password_for_auth(master_password, salt)
+    hash_fn = hash_master_password_for_auth_v1 if (user.auth_hash_version or 1) == 1 else hash_master_password_for_auth_v2
+    password_hash = hash_fn(master_password, salt)
     if password_hash != user.password_hash:
         raise HTTPException(status_code=400, detail="Şifre hatalı")
 
@@ -316,10 +354,10 @@ async def delete_account(db: AsyncSession, user: User, username: str, master_pas
         await send_account_deletion_notification(user_email)
 
 
-async def resend_verification(db: AsyncSession, user_id: str):
+async def resend_verification(db: AsyncSession, user_id: str, purpose: str = "register"):
     result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
     if user.email:
-        await send_verification_code(db, user_id, user.email, "register")
+        await send_verification_code(db, user_id, user.email, purpose)
