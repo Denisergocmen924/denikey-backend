@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from app.models.device import Device
 import uuid
 
@@ -145,3 +145,37 @@ async def unban_device(db: AsyncSession, user_id: str, device_id: str) -> bool:
     device.is_trusted = True
     await db.flush()
     return True
+
+
+async def is_totp_trust_valid(db: AsyncSession, user_id: str, device_id: str) -> bool:
+    """Cihazın TOTP güven süresi hâlâ geçerliyse True döndürür."""
+    result = await db.execute(
+        select(Device).where(
+            Device.user_id == uuid.UUID(user_id),
+            Device.device_name == device_id,
+            Device.status == "active",
+        )
+    )
+    device = result.scalar_one_or_none()
+    if not device or not device.totp_trusted_until:
+        return False
+    return device.totp_trusted_until > datetime.now(timezone.utc)
+
+
+async def set_totp_trust(
+    db: AsyncSession, user_id: str, device_id: str, duration_seconds: int
+) -> None:
+    """Başarılı TOTP doğrulamasının ardından cihaza güven süresi atar. duration_seconds=0 ise trust temizlenir."""
+    result = await db.execute(
+        select(Device).where(
+            Device.user_id == uuid.UUID(user_id),
+            Device.device_name == device_id,
+        )
+    )
+    device = result.scalar_one_or_none()
+    if device:
+        if duration_seconds <= 0:
+            device.totp_trusted_until = None
+        else:
+            device.totp_trusted_until = datetime.now(timezone.utc) + timedelta(seconds=duration_seconds)
+        await db.flush()

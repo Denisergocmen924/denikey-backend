@@ -17,15 +17,14 @@ class Settings(BaseSettings):
     # Veritabanı
     DATABASE_URL: str
 
-    # Supabase
-    SUPABASE_URL: str
-    SUPABASE_ANON_KEY: str
-
     # JWT
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 30
+
+    # TOTP — JWT_SECRET_KEY'den bağımsız; rotate edilmemeli
+    TOTP_SECRET_KEY: str
 
     # Şifreleme
     ENCRYPTION_VERSION: int = 1

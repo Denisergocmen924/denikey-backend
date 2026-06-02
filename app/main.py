@@ -1,10 +1,12 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
+from starlette.middleware.base import BaseHTTPMiddleware
 import asyncio
 import logging
 import os
+import secrets
 from datetime import datetime, timezone
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -81,6 +83,19 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(SlowAPIMiddleware)
 
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        return response
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.ALLOWED_ORIGINS,
@@ -100,7 +115,10 @@ async def health():
     return {"status": "healthy"}
 
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_panel():
+async def admin_panel(request: Request):
+    key = request.headers.get("x-admin-key", "") or request.query_params.get("key", "")
+    if not key or not secrets.compare_digest(key.encode(), settings.ADMIN_SECRET_KEY.encode()):
+        raise HTTPException(status_code=401, detail="Erişim reddedildi")
     html_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "admin.html")
     with open(html_path, "r", encoding="utf-8") as f:
         return f.read()

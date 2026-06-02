@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, and_
 from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryUpdate
 from fastapi import HTTPException
@@ -24,7 +24,10 @@ async def create_system_category(user_id: uuid.UUID, db: AsyncSession):
 async def get_categories(user_id: uuid.UUID, db: AsyncSession):
     result = await db.execute(
         select(Category).where(
-            or_(Category.user_id == user_id, Category.is_system == True)
+            or_(
+                Category.user_id == user_id,
+                and_(Category.user_id.is_(None), Category.is_system == True),
+            )
         ).order_by(Category.sort_order)
     )
     return result.scalars().all()

@@ -355,7 +355,7 @@ async function doLogin() {
     const r = await fetch(`${API}/admin/tickets/stats`, { headers: { 'X-Admin-Key': key } });
     if (!r.ok) throw new Error();
     adminKey = key;
-    localStorage.setItem('dk_admin_key', key);
+    sessionStorage.setItem('dk_admin_key', key);
     showMain();
   } catch {
     document.getElementById('login-error').style.display = 'block';
@@ -364,7 +364,7 @@ async function doLogin() {
 
 function logout() {
   adminKey = '';
-  localStorage.removeItem('dk_admin_key');
+  sessionStorage.removeItem('dk_admin_key');
   document.getElementById('main-screen').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
 }
@@ -428,14 +428,14 @@ function renderList() {
       <div class="tc-top">
         <div class="tc-subject">${esc(t.subject)}</div>
         <div class="tc-badges">
-          <span class="badge ${t.status}">${STATUS_MAP[t.status] || t.status}</span>
-          <span class="badge ${t.priority}">${PRI_MAP[t.priority] || t.priority}</span>
+          <span class="badge ${t.status}">${STATUS_MAP[t.status] || esc(t.status)}</span>
+          <span class="badge ${t.priority}">${PRI_MAP[t.priority] || esc(t.priority)}</span>
           ${t.admin_reply ? '<span class="badge replied">✓ Yanıtlandı</span>' : ''}
         </div>
       </div>
       <div class="tc-meta">
         <span>👤 ${esc(t.user_email)}</span>
-        <span class="badge cat">${CAT_MAP[t.category] || t.category}</span>
+        <span class="badge cat">${CAT_MAP[t.category] || esc(t.category)}</span>
         <span>${formatDate(t.created_at)}</span>
       </div>
       <div class="tc-preview">${esc(t.message)}</div>
@@ -452,16 +452,16 @@ function selectTicket(id) {
 
   document.getElementById('d-subject').textContent = t.subject;
   document.getElementById('d-email').textContent = t.user_email;
-  document.getElementById('d-category').textContent = CAT_MAP[t.category] || t.category;
-  document.getElementById('d-priority').textContent = PRI_MAP[t.priority] || t.priority;
+  document.getElementById('d-category').textContent = CAT_MAP[t.category] || esc(t.category);
+  document.getElementById('d-priority').textContent = PRI_MAP[t.priority] || esc(t.priority);
   document.getElementById('d-date').textContent = formatDate(t.created_at);
   document.getElementById('d-replied').textContent = t.replied_at ? formatDate(t.replied_at) : '—';
   document.getElementById('d-message').textContent = t.message;
 
   document.getElementById('d-badges').innerHTML = `
-    <span class="badge ${t.status}">${STATUS_MAP[t.status] || t.status}</span>
-    <span class="badge ${t.priority}">${PRI_MAP[t.priority] || t.priority}</span>
-    <span class="badge cat">${CAT_MAP[t.category] || t.category}</span>
+    <span class="badge ${t.status}">${STATUS_MAP[t.status] || esc(t.status)}</span>
+    <span class="badge ${t.priority}">${PRI_MAP[t.priority] || esc(t.priority)}</span>
+    <span class="badge cat">${CAT_MAP[t.category] || esc(t.category)}</span>
   `;
 
   const replySection = document.getElementById('d-reply-section');
@@ -561,7 +561,7 @@ function showToast(msg, isError = false) {
 
 // --- AUTO LOGIN ---
 window.onload = () => {
-  const saved = localStorage.getItem('dk_admin_key');
+  const saved = sessionStorage.getItem('dk_admin_key');
   if (saved) {
     adminKey = saved;
     fetch(`${API}/admin/tickets/stats`, { headers: { 'X-Admin-Key': saved } })

@@ -1,7 +1,7 @@
 """add_totp_fields_to_users
 
 Revision ID: a1b2c3d4e5f6
-Revises: fb120d5f99d2
+Revises: b013188d73cf
 Create Date: 2026-05-23
 
 """
@@ -10,7 +10,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = 'a1b2c3d4e5f6'
-down_revision: Union[str, Sequence[str], None] = 'fb120d5f99d2'
+down_revision: Union[str, Sequence[str], None] = 'b013188d73cf'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

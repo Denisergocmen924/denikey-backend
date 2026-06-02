@@ -1,9 +1,10 @@
-from pydantic import BaseModel, field_validator
+import re
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 
 class UserRegister(BaseModel):
     username: str
-    email: Optional[str] = None
+    email: Optional[EmailStr] = None
     phone: Optional[str] = None
     full_name: Optional[str] = None
     gender: Optional[str] = None
@@ -23,8 +24,18 @@ class UserRegister(BaseModel):
     @field_validator('master_password')
     @classmethod
     def password_valid(cls, v):
-        if len(v) < 6:
-            raise ValueError('Master password en az 6 karakter olmalı')
+        if len(v) < 10:
+            raise ValueError('Master password en az 10 karakter olmalı')
+        return v
+
+    @field_validator('phone')
+    @classmethod
+    def phone_valid(cls, v):
+        if v is None:
+            return v
+        v = v.strip()
+        if not re.match(r'^\+?[0-9]{7,15}$', v):
+            raise ValueError('Geçersiz telefon numarası formatı')
         return v
 
     def validate_email_or_phone(self):

@@ -16,4 +16,5 @@ class Device(Base):
     last_active_at = Column(DateTime(timezone=True), nullable=True)
     ip_address = Column(String(50), nullable=True)
     is_trusted = Column(Boolean, default=False)
+    totp_trusted_until = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
