@@ -6,7 +6,7 @@ from app.db.database import get_db
 from app.schemas.user import UserRegister, UserLogin, UserResponse, TokenResponse, UserProfileUpdate
 from app.services.user_service import (
     register_user, login_user, verify_email, verify_device,
-    resend_verification, forgot_password, reset_password,
+    resend_verification,
     change_email_request, change_email_confirm, update_profile, logout_user,
     delete_account,
 )
@@ -38,15 +38,6 @@ class VerifyDeviceRequest(BaseModel):
     device_id: str
     device_type: Optional[str] = None
     device_name: Optional[str] = None
-
-class ForgotPasswordRequest(BaseModel):
-    email: str
-
-class ResetPasswordRequest(BaseModel):
-    email: str
-    code: str
-    new_master_password: str
-    new_encryption_key_salt: str
 
 class ChangeEmailRequest(BaseModel):
     new_email: str
@@ -234,19 +225,6 @@ async def resend_verification_endpoint(request: Request, data: ResendVerificatio
     purpose = payload.get("purpose", "register")
     await resend_verification(db, user_id, purpose)
     return {"message": "Doğrulama kodu tekrar gönderildi"}
-
-
-@router.post("/forgot-password")
-@limiter.limit("3/minute")
-async def forgot_password_endpoint(request: Request, data: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
-    await forgot_password(db, data.email)
-    return {"message": "E-posta adresiniz kayıtlıysa kod gönderildi"}
-
-
-@router.post("/reset-password")
-@limiter.limit("3/minute")
-async def reset_password_endpoint(request: Request, data: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
-    return await reset_password(db, data.email, data.code, data.new_master_password, data.new_encryption_key_salt)
 
 
 @router.post("/change-email")

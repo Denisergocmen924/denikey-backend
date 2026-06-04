@@ -162,7 +162,7 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
         user.failed_attempts += 1
         if user.failed_attempts >= 5:
             user.is_locked = True
-            user.lock_until = datetime.now(timezone.utc) + timedelta(minutes=30)
+            user.lock_until = datetime.now(timezone.utc) + timedelta(minutes=20)
         await db.flush()
         await create_audit_log(db=db, user_id=str(user.id), action="login_failed", status="failed", ip_address=ip_address, extra_data={"attempts": user.failed_attempts})
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
@@ -231,44 +231,6 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
         "needs_device_verification": False,
         "needs_totp": False,
     }
-
-
-async def forgot_password(db: AsyncSession, email: str) -> dict:
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-    if not user:
-        # Güvenlik için aynı mesajı döndür
-        return {"user_id": None, "sent": False}
-
-    await send_verification_code(db, str(user.id), email, "forgot_password")
-    return {"user_id": str(user.id), "sent": True}
-
-
-async def reset_password(db: AsyncSession, email: str, code: str, new_master_password: str, new_encryption_key_salt: str) -> dict:
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş kod")
-
-    is_valid = await verify_code(db, str(user.id), code, "forgot_password")
-    if not is_valid:
-        raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş kod")
-
-    salt = string_to_salt(new_encryption_key_salt)
-    user.password_hash = hash_master_password_for_auth_v2(new_master_password, salt)
-    user.auth_hash_version = 2
-    user.encryption_key_salt = new_encryption_key_salt
-    user.failed_attempts = 0
-    user.is_locked = False
-    user.token_version = (user.token_version or 0) + 1
-    await db.flush()
-
-    await create_audit_log(db=db, user_id=str(user.id), action="password_reset", status="success")
-
-    payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
-    token = create_access_token(payload)
-    refresh = create_refresh_token(payload)
-    return {"access_token": token, "refresh_token": refresh, "encryption_key_salt": user.encryption_key_salt}
 
 
 async def change_email_request(db: AsyncSession, user_id: str, new_email: str) -> None:

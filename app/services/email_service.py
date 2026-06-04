@@ -67,14 +67,12 @@ async def send_verification_code(
     subject_map = {
         "register": "DeniKey — Hesabınızı doğrulayın",
         "new_device": "DeniKey — Yeni cihaz girişi",
-        "forgot_password": "DeniKey — Şifre sıfırlama",
         "email_change": "DeniKey — E-posta değişikliği",
     }
 
     body_map = {
         "register": f"Hesabınızı doğrulamak için kodunuz: <b>{code}</b><br>Bu kod 10 dakika geçerlidir.",
         "new_device": f"Yeni cihaz girişi tespit edildi. Doğrulama kodunuz: <b>{code}</b><br>Bu kod 10 dakika geçerlidir.",
-        "forgot_password": f"Şifrenizi sıfırlamak için kodunuz: <b>{code}</b><br>Bu kod 10 dakika geçerlidir.",
         "email_change": f"E-posta değişikliği için doğrulama kodunuz: <b>{code}</b><br>Bu kod 10 dakika geçerlidir.",
     }
 
