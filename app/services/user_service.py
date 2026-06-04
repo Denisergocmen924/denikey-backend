@@ -263,7 +263,7 @@ async def reset_password(db: AsyncSession, email: str, code: str, new_master_pas
     user.token_version = (user.token_version or 0) + 1
     await db.flush()
 
-    await create_audit_log(db=db, user_id=user_id, action="password_reset", status="success")
+    await create_audit_log(db=db, user_id=str(user.id), action="password_reset", status="success")
 
     payload = {"sub": str(user.id), "username": user.username, "tv": user.token_version}
     token = create_access_token(payload)

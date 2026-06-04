@@ -162,6 +162,38 @@ async def is_totp_trust_valid(db: AsyncSession, user_id: str, device_id: str) ->
     return device.totp_trusted_until > datetime.now(timezone.utc)
 
 
+async def delete_device(db: AsyncSession, user_id: str, device_id: str) -> bool:
+    """Cihazı kalıcı olarak siler."""
+    result = await db.execute(
+        select(Device).where(
+            Device.user_id == uuid.UUID(user_id),
+            Device.id == uuid.UUID(device_id),
+        )
+    )
+    device = result.scalar_one_or_none()
+    if not device:
+        return False
+    await db.delete(device)
+    await db.flush()
+    return True
+
+
+async def rename_device(db: AsyncSession, user_id: str, device_id: str, display_name: str) -> bool:
+    """Cihaz görünen adını günceller."""
+    result = await db.execute(
+        select(Device).where(
+            Device.user_id == uuid.UUID(user_id),
+            Device.id == uuid.UUID(device_id),
+        )
+    )
+    device = result.scalar_one_or_none()
+    if not device:
+        return False
+    device.display_name = display_name.strip()[:100]
+    await db.flush()
+    return True
+
+
 async def set_totp_trust(
     db: AsyncSession, user_id: str, device_id: str, duration_seconds: int
 ) -> None:
