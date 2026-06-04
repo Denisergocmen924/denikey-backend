@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import resend
 import secrets
 import string
@@ -11,6 +12,8 @@ import uuid
 
 resend.api_key = settings.RESEND_API_KEY
 
+logger = logging.getLogger(__name__)
+
 
 def _generate_code() -> str:
     return ''.join(secrets.choice(string.digits) for _ in range(6))
@@ -18,11 +21,12 @@ def _generate_code() -> str:
 
 async def _fire_resend(payload: dict) -> None:
     """resend.Emails.send() senkron bir HTTP çağrısıdır; thread pool'da çalıştırarak
-    asyncio event loop'unu bloke etmekten kaçınır. Hata olursa sessizce geçilir."""
+    asyncio event loop'unu bloke etmekten kaçınır."""
     try:
         await asyncio.to_thread(resend.Emails.send, payload)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error("Resend e-posta gönderilemedi — to=%s subject=%s hata=%s",
+                     payload.get("to"), payload.get("subject"), e)
 
 
 async def send_verification_code(
