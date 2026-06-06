@@ -11,9 +11,7 @@ from app.core.config import settings
 from app.core.security import (
     encrypt_data,
     decrypt_data,
-    hash_master_password_for_auth_v1,
-    hash_master_password_for_auth_v2,
-    string_to_salt,
+    verify_auth_verifier,
 )
 from app.models.user import User
 
@@ -67,12 +65,9 @@ async def enable_totp(db: AsyncSession, user: User, secret: str, code: str) -> N
     await db.flush()
 
 
-async def disable_totp(db: AsyncSession, user: User, master_password: str) -> None:
-    """TOTP'u devre dışı bırakır: master password doğrulaması gerekir."""
-    salt = string_to_salt(user.encryption_key_salt)
-    hash_fn = hash_master_password_for_auth_v1 if (user.auth_hash_version or 1) == 1 else hash_master_password_for_auth_v2
-    password_hash = hash_fn(master_password, salt)
-    if password_hash != user.password_hash:
+async def disable_totp(db: AsyncSession, user: User, auth_verifier: str) -> None:
+    """TOTP'u devre dışı bırakır: verifier doğrulaması gerekir."""
+    if not verify_auth_verifier(auth_verifier, user.password_hash):
         raise HTTPException(status_code=401, detail="Master password hatalı")
 
     user.totp_secret = None

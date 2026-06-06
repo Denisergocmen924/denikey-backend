@@ -3,12 +3,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from app.db.database import get_db
-from app.schemas.user import UserRegister, UserLogin, UserResponse, TokenResponse, UserProfileUpdate
+from app.schemas.user import (
+    UserRegister, UserLogin, UserResponse, TokenResponse, UserProfileUpdate,
+    LoginSaltRequest, LoginSaltResponse,
+)
 from app.services.user_service import (
     register_user, login_user, verify_email, verify_device,
     resend_verification,
     change_email_request, change_email_confirm, update_profile, logout_user,
-    delete_account,
+    delete_account, get_login_salt,
 )
 from app.core.dependencies import get_current_user, get_current_device_id
 from app.core.security import verify_refresh_token, create_access_token, create_refresh_token
@@ -18,6 +21,7 @@ from sqlalchemy import select
 import uuid
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 limiter = Limiter(key_func=get_remote_address)
@@ -51,14 +55,14 @@ class RefreshTokenRequest(BaseModel):
 
 class DeleteAccountRequest(BaseModel):
     username: str
-    master_password: str
+    auth_verifier: str
 
 class TotpEnableRequest(BaseModel):
     secret: str
     code: str
 
 class TotpDisableRequest(BaseModel):
-    master_password: str
+    auth_verifier: str
 
 class TotpVerifyLoginRequest(BaseModel):
     temp_token: str
@@ -94,6 +98,15 @@ async def register(data: UserRegister, request: Request, db: AsyncSession = Depe
     }
 
 
+@router.post("/login-salt", response_model=LoginSaltResponse)
+@limiter.limit("10/minute")
+async def login_salt(data: LoginSaltRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    """Login'in 1. adımı: istemci verifier'ı türetebilsin diye salt döner.
+    Var olmayan kullanıcıda sahte-tutarlı salt → username enumeration engellenir."""
+    salt = await get_login_salt(db, data.username)
+    return {"encryption_key_salt": salt}
+
+
 @router.post("/login")
 @limiter.limit("10/minute")
 async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(get_db)):
@@ -101,7 +114,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
     result = await login_user(
         db,
         data.username,
-        data.master_password,
+        data.auth_verifier,
         device_id=data.device_id,
         device_type=data.device_type,
         display_name=data.device_name,
@@ -282,7 +295,7 @@ async def delete_account_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    await delete_account(db, current_user, data.username, data.master_password)
+    await delete_account(db, current_user, data.username, data.auth_verifier)
     return {"message": "Hesabınız kalıcı olarak silindi"}
 
 
@@ -389,7 +402,7 @@ async def totp_disable(
     current_user: User = Depends(get_current_user),
 ):
     from app.services.totp_service import disable_totp
-    await disable_totp(db, current_user, data.master_password)
+    await disable_totp(db, current_user, data.auth_verifier)
     await db.commit()
     return {"message": "Authenticator Koruması devre dışı bırakıldı"}
 
@@ -417,6 +430,15 @@ async def totp_verify_login(
     user = result.scalar_one_or_none()
     if not user or not user.totp_enabled or not user.totp_secret:
         raise HTTPException(status_code=401, detail="Geçersiz istek")
+
+    if user.is_locked:
+        if user.lock_until and datetime.now(timezone.utc) >= user.lock_until:
+            user.is_locked = False
+            user.failed_attempts = 0
+            user.lock_until = None
+            await db.commit()
+        else:
+            raise HTTPException(status_code=403, detail="Hesap geçici olarak kilitlendi")
 
     if not verify_totp_code(user.totp_secret, data.code):
         await create_audit_log(

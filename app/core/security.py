@@ -209,5 +209,36 @@ def hash_master_password_for_auth_v2(master_password: str, salt: bytes) -> str:
 
 
 def hash_master_password_for_auth(master_password: str, salt: bytes) -> str:
-    """Yeni kayıt ve şifre sıfırlama için her zaman v2 kullanılır."""
+    """Yeni kayıt ve şifre sıfırlama için her zaman v2 kullanılır.
+
+    NOT (v3): Auth hash'lemesi artık istemciye taşındı. v1/v2 yalnızca v3 öncesi
+    saklanan hash'leri ve migration'ı anlamak için bırakıldı; yeni akışta çağrılmaz.
+    """
     return hash_master_password_for_auth_v2(master_password, salt)
+
+
+# ============================================================
+# DOĞRULAMA — v3: İstemci Tarafı Türetilen Verifier (Gerçek ZK Auth)
+# ============================================================
+# İstemci, ham parolayı GÖNDERMEZ. Bunun yerine:
+#   auth_salt = sha256(encryption_salt + b"denikey-auth-v1")   (_auth_salt ile aynı)
+#   verifier  = base64(Argon2id(password, auth_salt, t=3, m=64MB, p=2, len=32))
+# yani v2 ile birebir aynı değeri lokal hesaplar ve yalnızca verifier'ı yollar.
+#
+# Sunucu Argon2 YAPMAZ; verifier'ı SHA-256'layıp saklı değerle karşılaştırır.
+# Saklanan değer = SHA256(verifier) → DB sızıntısında verifier replay edilemez
+# (saklı değer ≠ tel üstündeki değer). Verifier ≠ şifreleme anahtarı (farklı salt)
+# → aktif sunucu ele geçirme bile vault'u deşifre edemez.
+
+def hash_auth_verifier(auth_verifier: str) -> str:
+    """İstemciden gelen verifier'ı saklamak/doğrulamak için SHA-256'lar (base64)."""
+    import hashlib
+    return base64.b64encode(
+        hashlib.sha256(auth_verifier.encode('utf-8')).digest()
+    ).decode('utf-8')
+
+
+def verify_auth_verifier(auth_verifier: str, stored_hash: str) -> bool:
+    """Gelen verifier'ın SHA-256'sını saklı hash ile constant-time karşılaştırır."""
+    import secrets
+    return secrets.compare_digest(hash_auth_verifier(auth_verifier), stored_hash)

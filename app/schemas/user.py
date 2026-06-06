@@ -8,7 +8,7 @@ class UserRegister(BaseModel):
     phone: Optional[str] = None
     full_name: Optional[str] = None
     gender: Optional[str] = None
-    master_password: str
+    auth_verifier: str  # istemci tarafı türetilen verifier — ham parola sunucuya gelmez
     encryption_key_salt: str
     device_id: Optional[str] = None
     device_type: Optional[str] = None
@@ -21,12 +21,7 @@ class UserRegister(BaseModel):
             raise ValueError('Kullanıcı adı 3-50 karakter olmalı')
         return v
 
-    @field_validator('master_password')
-    @classmethod
-    def password_valid(cls, v):
-        if len(v) < 10:
-            raise ValueError('Master password en az 10 karakter olmalı')
-        return v
+    # Parola uzunluğu (min 10) artık istemcide doğrulanır — sunucu ham parolayı görmez
 
     @field_validator('phone')
     @classmethod
@@ -44,10 +39,17 @@ class UserRegister(BaseModel):
 
 class UserLogin(BaseModel):
     username: str
-    master_password: str
+    auth_verifier: str  # ham parola değil; istemcide türetilen verifier
     device_id: Optional[str] = None
     device_type: Optional[str] = None
     device_name: Optional[str] = None  # okunabilir isim: "Samsung Galaxy S21"
+
+class LoginSaltRequest(BaseModel):
+    username: str
+
+class LoginSaltResponse(BaseModel):
+    # Var olmayan kullanıcıda sahte-ama-tutarlı salt döner (enumeration'ı engeller)
+    encryption_key_salt: str
 
 class UserResponse(BaseModel):
     id: str

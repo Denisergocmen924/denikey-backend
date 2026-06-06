@@ -4,14 +4,13 @@ from datetime import datetime, timezone, timedelta
 from app.models.user import User
 from app.schemas.user import UserRegister
 from app.core.security import (
-    string_to_salt,
-    hash_master_password_for_auth,
-    hash_master_password_for_auth_v1,
-    hash_master_password_for_auth_v2,
+    hash_auth_verifier,
+    verify_auth_verifier,
     create_access_token,
     create_refresh_token,
     create_email_verify_token,
 )
+from app.core.config import settings
 from app.services.audit_log_service import create_audit_log
 from app.services.category_service import create_system_category
 from app.services.email_service import send_verification_code, verify_code
@@ -50,8 +49,8 @@ async def register_user(db: AsyncSession, data: UserRegister, ip_address: str = 
         if result.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Bu telefon numarası zaten kayıtlı")
 
-    salt = string_to_salt(data.encryption_key_salt)
-    password_hash = hash_master_password_for_auth(data.master_password, salt)
+    # İstemci verifier'ı türetip yolladı; sunucu yalnızca SHA-256'sını saklar
+    password_hash = hash_auth_verifier(data.auth_verifier)
 
     user = User(
         id=uuid.uuid4(),
@@ -63,7 +62,7 @@ async def register_user(db: AsyncSession, data: UserRegister, ip_address: str = 
         password_hash=password_hash,
         encryption_key_salt=data.encryption_key_salt,
         is_verified=False,
-        auth_hash_version=2,
+        auth_hash_version=3,
     )
     db.add(user)
     await db.flush()
@@ -133,7 +132,31 @@ async def verify_device(db: AsyncSession, user_id: str, code: str, device_id: st
     return {"access_token": token, "refresh_token": refresh, "encryption_key_salt": user.encryption_key_salt}
 
 
-async def login_user(db: AsyncSession, username: str, master_password: str, device_id: str = None, device_type: str = None, display_name: str = None, ip_address: str = None) -> dict:
+def _fake_salt(username: str) -> str:
+    """Var olmayan kullanıcı için deterministik, gerçek salt'tan ayırt edilemez salt.
+    Pepper olarak TOTP_SECRET_KEY kullanılır (sabit; JWT rotate'inde değişmez ki
+    sahte salt zamanla değişip 'sahte' olduğunu ele vermesin). Gerçek salt = 32 bayt base64."""
+    import hmac, hashlib, base64
+    digest = hmac.new(
+        settings.TOTP_SECRET_KEY.encode('utf-8'),
+        username.strip().lower().encode('utf-8'),
+        hashlib.sha256,
+    ).digest()
+    return base64.b64encode(digest).decode('utf-8')
+
+
+async def get_login_salt(db: AsyncSession, username: str) -> str:
+    """Login'in 1. adımı: istemciye encryption_key_salt döner ki verifier'ı türetebilsin.
+    Var olmayan kullanıcıda sahte-ama-tutarlı salt → username enumeration engellenir."""
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+    if not user:
+        result = await db.execute(select(User).where(User.email == username))
+        user = result.scalar_one_or_none()
+    return user.encryption_key_salt if user else _fake_salt(username)
+
+
+async def login_user(db: AsyncSession, username: str, auth_verifier: str, device_id: str = None, device_type: str = None, display_name: str = None, ip_address: str = None) -> dict:
     result = await db.execute(select(User).where(User.username == username))
     user = result.scalar_one_or_none()
 
@@ -154,11 +177,7 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
         else:
             raise HTTPException(status_code=403, detail="Hesabınız kilitlenmiştir")
 
-    salt = string_to_salt(user.encryption_key_salt)
-    hash_fn = hash_master_password_for_auth_v1 if (user.auth_hash_version or 1) == 1 else hash_master_password_for_auth_v2
-    password_hash = hash_fn(master_password, salt)
-
-    if password_hash != user.password_hash:
+    if not verify_auth_verifier(auth_verifier, user.password_hash):
         user.failed_attempts += 1
         if user.failed_attempts >= 5:
             user.is_locked = True
@@ -168,9 +187,6 @@ async def login_user(db: AsyncSession, username: str, master_password: str, devi
         raise HTTPException(status_code=401, detail="Kullanıcı adı veya şifre hatalı")
 
     user.failed_attempts = 0
-    if (user.auth_hash_version or 1) == 1:
-        user.password_hash = hash_master_password_for_auth_v2(master_password, salt)
-        user.auth_hash_version = 2
     await db.flush()
 
     if not user.is_verified:
@@ -297,14 +313,11 @@ async def logout_user(db: AsyncSession, user: User) -> None:
     await db.commit()
 
 
-async def delete_account(db: AsyncSession, user: User, username: str, master_password: str) -> None:
+async def delete_account(db: AsyncSession, user: User, username: str, auth_verifier: str) -> None:
     if username != user.username:
         raise HTTPException(status_code=400, detail="Kullanıcı adı hatalı")
 
-    salt = string_to_salt(user.encryption_key_salt)
-    hash_fn = hash_master_password_for_auth_v1 if (user.auth_hash_version or 1) == 1 else hash_master_password_for_auth_v2
-    password_hash = hash_fn(master_password, salt)
-    if password_hash != user.password_hash:
+    if not verify_auth_verifier(auth_verifier, user.password_hash):
         raise HTTPException(status_code=400, detail="Şifre hatalı")
 
     user_email = user.email
