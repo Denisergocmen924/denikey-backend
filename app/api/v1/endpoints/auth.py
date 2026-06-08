@@ -63,6 +63,7 @@ class TotpEnableRequest(BaseModel):
 
 class TotpDisableRequest(BaseModel):
     auth_verifier: str
+    totp_code: str
 
 class TotpVerifyLoginRequest(BaseModel):
     temp_token: str
@@ -90,7 +91,6 @@ async def register(data: UserRegister, request: Request, db: AsyncSession = Depe
             "id": str(result["user"].id),
             "username": result["user"].username,
             "email": result["user"].email,
-            "phone": result["user"].phone,
             "full_name": result["user"].full_name,
             "preferred_language": result["user"].preferred_language,
             "preferred_theme": result["user"].preferred_theme,
@@ -151,7 +151,6 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
             "id": str(result["user"].id),
             "username": result["user"].username,
             "email": result["user"].email,
-            "phone": result["user"].phone,
             "full_name": result["user"].full_name,
             "preferred_language": result["user"].preferred_language,
             "preferred_theme": result["user"].preferred_theme,
@@ -266,13 +265,12 @@ async def update_profile_endpoint(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    user = await update_profile(db, current_user, username=data.username, full_name=data.full_name, gender=data.gender)
+    user = await update_profile(db, current_user, username=data.username, full_name=data.full_name)
     return {
         "id": str(user.id),
         "username": user.username,
         "email": user.email,
         "full_name": user.full_name,
-        "gender": user.gender,
     }
 
 
@@ -285,7 +283,6 @@ async def get_profile_endpoint(
         "username": current_user.username,
         "email": current_user.email,
         "full_name": current_user.full_name,
-        "gender": current_user.gender,
     }
 
 
@@ -402,7 +399,7 @@ async def totp_disable(
     current_user: User = Depends(get_current_user),
 ):
     from app.services.totp_service import disable_totp
-    await disable_totp(db, current_user, data.auth_verifier)
+    await disable_totp(db, current_user, data.auth_verifier, data.totp_code)
     await db.commit()
     return {"message": "Authenticator Koruması devre dışı bırakıldı"}
 
@@ -489,7 +486,6 @@ async def totp_verify_login(
             "id": user_id,
             "username": user.username,
             "email": user.email,
-            "phone": user.phone,
             "full_name": user.full_name,
             "preferred_language": user.preferred_language,
             "preferred_theme": user.preferred_theme,

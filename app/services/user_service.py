@@ -23,31 +23,30 @@ import uuid
 
 
 async def register_user(db: AsyncSession, data: UserRegister, ip_address: str = None) -> dict:
-    if not data.email and not data.phone:
-        raise HTTPException(status_code=400, detail="E-posta veya telefon numarası zorunlu")
+    _UNVERIFIED_COOLDOWN = timedelta(minutes=10)
 
     result = await db.execute(select(User).where(User.username == data.username))
     existing_username = result.scalar_one_or_none()
     if existing_username and existing_username.is_verified:
-        raise HTTPException(status_code=400, detail="Bu kullanıcı adı zaten kullanılıyor")
+        raise HTTPException(status_code=400, detail="Bu bilgilerle kayıt oluşturulamadı")
     if existing_username and not existing_username.is_verified:
+        created = existing_username.created_at
+        if created and (datetime.now(timezone.utc) - created.replace(tzinfo=timezone.utc if created.tzinfo is None else created.tzinfo)) < _UNVERIFIED_COOLDOWN:
+            raise HTTPException(status_code=400, detail="Bu bilgilerle kayıt oluşturulamadı")
         await db.delete(existing_username)
         await db.flush()
 
-    if data.email:
-        result = await db.execute(select(User).where(User.email == data.email))
-        existing = result.scalar_one_or_none()
-        if existing:
-            if existing.is_verified:
-                raise HTTPException(status_code=400, detail="Bu e-posta zaten kayıtlı")
-            # Doğrulanmamış hesabı sil — cascade ile tüm bağlı veriler temizlenir
-            await db.delete(existing)
-            await db.flush()
-
-    if data.phone:
-        result = await db.execute(select(User).where(User.phone == data.phone))
-        if result.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Bu telefon numarası zaten kayıtlı")
+    result = await db.execute(select(User).where(User.email == data.email))
+    existing = result.scalar_one_or_none()
+    if existing:
+        if existing.is_verified:
+            raise HTTPException(status_code=400, detail="Bu bilgilerle kayıt oluşturulamadı")
+        created = existing.created_at
+        if created and (datetime.now(timezone.utc) - created.replace(tzinfo=timezone.utc if created.tzinfo is None else created.tzinfo)) < _UNVERIFIED_COOLDOWN:
+            raise HTTPException(status_code=400, detail="Bu bilgilerle kayıt oluşturulamadı")
+        # Doğrulanmamış hesabı sil — cascade ile tüm bağlı veriler temizlenir
+        await db.delete(existing)
+        await db.flush()
 
     # İstemci verifier'ı türetip yolladı; sunucu yalnızca SHA-256'sını saklar
     password_hash = hash_auth_verifier(data.auth_verifier)
@@ -56,9 +55,7 @@ async def register_user(db: AsyncSession, data: UserRegister, ip_address: str = 
         id=uuid.uuid4(),
         username=data.username,
         email=data.email,
-        phone=data.phone,
         full_name=data.full_name,
-        gender=data.gender,
         password_hash=password_hash,
         encryption_key_salt=data.encryption_key_salt,
         is_verified=False,
@@ -275,7 +272,7 @@ async def change_email_confirm(db: AsyncSession, user_id: str, code: str, new_em
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
 
-    is_valid = await verify_code(db, user_id, code, "email_change")
+    is_valid = await verify_code(db, user_id, code, "email_change", target_email=new_email)
     if not is_valid:
         raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş kod")
 
@@ -290,7 +287,6 @@ async def update_profile(
     user: User,
     username: str = None,
     full_name: str = None,
-    gender: str = None,
 ) -> User:
     if username and username != user.username:
         result = await db.execute(select(User).where(User.username == username))
@@ -299,8 +295,6 @@ async def update_profile(
         user.username = username
     if full_name is not None:
         user.full_name = full_name
-    if gender is not None:
-        user.gender = gender
     await db.flush()
     await db.refresh(user)
     return user

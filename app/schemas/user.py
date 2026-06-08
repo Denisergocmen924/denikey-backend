@@ -1,13 +1,10 @@
-import re
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 
 class UserRegister(BaseModel):
     username: str
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
+    email: EmailStr
     full_name: Optional[str] = None
-    gender: Optional[str] = None
     auth_verifier: str  # istemci tarafı türetilen verifier — ham parola sunucuya gelmez
     encryption_key_salt: str
     device_id: Optional[str] = None
@@ -22,20 +19,6 @@ class UserRegister(BaseModel):
         return v
 
     # Parola uzunluğu (min 10) artık istemcide doğrulanır — sunucu ham parolayı görmez
-
-    @field_validator('phone')
-    @classmethod
-    def phone_valid(cls, v):
-        if v is None:
-            return v
-        v = v.strip()
-        if not re.match(r'^\+?[0-9]{7,15}$', v):
-            raise ValueError('Geçersiz telefon numarası formatı')
-        return v
-
-    def validate_email_or_phone(self):
-        if not self.email and not self.phone:
-            raise ValueError('E-posta veya telefon numarası zorunlu')
 
 class UserLogin(BaseModel):
     username: str
@@ -55,9 +38,7 @@ class UserResponse(BaseModel):
     id: str
     username: str
     email: Optional[str] = None
-    phone: Optional[str] = None
     full_name: Optional[str] = None
-    gender: Optional[str] = None
     preferred_language: str
     preferred_theme: str
 
@@ -67,7 +48,6 @@ class UserResponse(BaseModel):
 class UserProfileUpdate(BaseModel):
     username: Optional[str] = None
     full_name: Optional[str] = None
-    gender: Optional[str] = None
 
     @field_validator('username')
     @classmethod
