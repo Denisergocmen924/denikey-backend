@@ -7,3 +7,4 @@ from app.models.audit_log import AuditLog
 from app.models.password_history import PasswordHistory
 from app.models.trash import Trash
 from app.models.support_ticket import SupportTicket
+from app.models.system_setting import SystemSetting

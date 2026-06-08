@@ -5,226 +5,265 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DeniKey Admin</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-  :root {
-    --purple: #534AB7;
-    --purple-dark: #3d3690;
-    --purple-light: #ede9ff;
-    --bg: #f4f5f9;
-    --card: #ffffff;
-    --border: #e2e4ec;
-    --text: #1a1a2e;
-    --muted: #6b7280;
-    --open: #2563eb;
-    --open-bg: #dbeafe;
-    --progress: #d97706;
-    --progress-bg: #fef3c7;
-    --closed: #16a34a;
-    --closed-bg: #dcfce7;
-    --high: #dc2626;
-    --high-bg: #fee2e2;
-    --normal: #6b7280;
-    --normal-bg: #f3f4f6;
-    --low: #0891b2;
-    --low-bg: #cffafe;
-  }
+:root {
+  --purple: #534AB7;
+  --purple-dark: #3d3690;
+  --purple-light: #ede9ff;
+  --sidebar-bg: #0f0e1a;
+  --sidebar-hover: #1e1b33;
+  --bg: #f0f2f8;
+  --card: #ffffff;
+  --border: #e2e4ec;
+  --text: #1a1a2e;
+  --muted: #6b7280;
+  --success: #16a34a;
+  --success-bg: #dcfce7;
+  --danger: #dc2626;
+  --danger-bg: #fee2e2;
+  --warning: #d97706;
+  --warning-bg: #fef3c7;
+  --info: #0891b2;
+  --info-bg: #cffafe;
+}
 
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
 
-  /* LOGIN */
-  #login-screen {
-    display: flex; align-items: center; justify-content: center; min-height: 100vh;
-    background: linear-gradient(135deg, #1a1040 0%, #534AB7 100%);
-  }
-  .login-box {
-    background: white; border-radius: 16px; padding: 48px 40px; width: 360px;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  }
-  .login-logo { text-align: center; margin-bottom: 32px; }
-  .login-logo h1 { font-size: 28px; font-weight: 800; color: var(--purple); }
-  .login-logo p { color: var(--muted); font-size: 14px; margin-top: 4px; }
-  .login-box input {
-    width: 100%; padding: 12px 16px; border: 2px solid var(--border); border-radius: 10px;
-    font-size: 15px; outline: none; transition: border-color .2s;
-  }
-  .login-box input:focus { border-color: var(--purple); }
-  .login-box button {
-    width: 100%; padding: 13px; background: var(--purple); color: white; border: none;
-    border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; margin-top: 12px;
-    transition: background .2s;
-  }
-  .login-box button:hover { background: var(--purple-dark); }
-  .login-error { color: #dc2626; font-size: 13px; margin-top: 8px; text-align: center; display: none; }
+/* LOGIN */
+#login-screen {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f0e1a 0%, #1e1b33 50%, #2d2660 100%);
+}
+.login-box {
+  background: white; border-radius: 20px; padding: 52px 44px; width: 380px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.4);
+}
+.login-logo { text-align: center; margin-bottom: 36px; }
+.login-logo .logo-icon {
+  width: 64px; height: 64px; background: linear-gradient(135deg, var(--purple), #7c73d8);
+  border-radius: 16px; display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 16px; font-size: 28px;
+}
+.login-logo h1 { font-size: 24px; font-weight: 800; color: var(--text); }
+.login-logo p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.login-box input {
+  width: 100%; padding: 13px 16px; border: 2px solid var(--border); border-radius: 12px;
+  font-size: 15px; outline: none; transition: border-color .2s; margin-top: 8px;
+}
+.login-box input:focus { border-color: var(--purple); }
+.login-box button {
+  width: 100%; padding: 14px; background: var(--purple); color: white;
+  border: none; border-radius: 12px; font-size: 15px; font-weight: 600;
+  cursor: pointer; margin-top: 20px; transition: background .2s;
+}
+.login-box button:hover { background: var(--purple-dark); }
+#login-error { color: var(--danger); font-size: 13px; margin-top: 10px; text-align: center; display: none; }
 
-  /* MAIN */
-  #main-screen { display: none; }
+/* APP SHELL */
+#app { display: none; height: 100vh; overflow: hidden; }
 
-  /* HEADER */
-  header {
-    background: var(--purple); color: white; padding: 0 32px;
-    height: 60px; display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(83,74,183,.3);
-  }
-  header h1 { font-size: 20px; font-weight: 700; }
-  header span { font-size: 13px; opacity: .7; }
-  .logout-btn {
-    background: rgba(255,255,255,.15); border: none; color: white; padding: 7px 16px;
-    border-radius: 8px; cursor: pointer; font-size: 13px; transition: background .2s;
-  }
-  .logout-btn:hover { background: rgba(255,255,255,.25); }
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; width: 240px;
+  background: var(--sidebar-bg); display: flex; flex-direction: column; z-index: 10;
+}
+.sidebar-header { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.sidebar-logo { display: flex; align-items: center; gap: 12px; }
+.sidebar-logo .logo-icon {
+  width: 36px; height: 36px; background: linear-gradient(135deg, var(--purple), #7c73d8);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.sidebar-logo span { font-size: 16px; font-weight: 700; color: white; }
+.sidebar-logo small { display: block; font-size: 11px; color: rgba(255,255,255,0.4); font-weight: 400; }
+.sidebar-nav { flex: 1; padding: 12px 10px; overflow-y: auto; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; border-radius: 10px; cursor: pointer;
+  color: rgba(255,255,255,0.55); font-size: 14px; font-weight: 500;
+  transition: all .15s; margin-bottom: 2px; user-select: none;
+}
+.nav-item:hover { background: var(--sidebar-hover); color: rgba(255,255,255,0.85); }
+.nav-item.active { background: var(--purple); color: white; }
+.nav-icon { font-size: 17px; width: 20px; text-align: center; flex-shrink: 0; }
+.nav-badge {
+  margin-left: auto; background: var(--danger); color: white;
+  font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 20px;
+}
+.sidebar-footer { padding: 16px 10px; border-top: 1px solid rgba(255,255,255,0.06); }
+.logout-btn {
+  display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px;
+  cursor: pointer; color: rgba(255,255,255,0.4); font-size: 14px; transition: all .15s;
+}
+.logout-btn:hover { background: rgba(220,38,38,0.15); color: #f87171; }
 
-  /* LAYOUT */
-  .layout { display: flex; height: calc(100vh - 60px); }
+.main { margin-left: 240px; height: 100vh; overflow-y: auto; }
+.main-header {
+  background: white; padding: 18px 32px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 5;
+}
+.main-header h2 { font-size: 18px; font-weight: 700; }
+.header-meta { font-size: 12px; color: var(--muted); }
+.content { padding: 28px 32px; }
 
-  /* SIDEBAR */
-  .sidebar {
-    width: 260px; background: var(--card); border-right: 1px solid var(--border);
-    padding: 24px 16px; overflow-y: auto; flex-shrink: 0;
-  }
-  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 24px; }
-  .stat-card {
-    background: var(--bg); border-radius: 10px; padding: 12px;
-    text-align: center; border: 1px solid var(--border);
-  }
-  .stat-card .num { font-size: 22px; font-weight: 700; color: var(--purple); }
-  .stat-card .lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .stat-card.open .num { color: var(--open); }
-  .stat-card.progress .num { color: var(--progress); }
-  .stat-card.closed .num { color: var(--closed); }
+/* STATS */
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
+.stat-card {
+  background: white; border-radius: 16px; padding: 22px 24px;
+  display: flex; align-items: center; gap: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.stat-icon {
+  width: 48px; height: 48px; border-radius: 14px;
+  display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0;
+}
+.stat-icon.purple { background: var(--purple-light); }
+.stat-icon.green  { background: var(--success-bg); }
+.stat-icon.red    { background: var(--danger-bg); }
+.stat-icon.blue   { background: var(--info-bg); }
+.stat-icon.yellow { background: var(--warning-bg); }
+.stat-icon.gray   { background: #f3f4f6; }
+.stat-value { font-size: 28px; font-weight: 800; color: var(--text); line-height: 1; }
+.stat-label { font-size: 13px; color: var(--muted); margin-top: 4px; }
 
-  .filter-title { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .8px; text-transform: uppercase; margin-bottom: 8px; }
-  .filter-btn {
-    width: 100%; text-align: left; padding: 9px 12px; border: none; background: none;
-    border-radius: 8px; cursor: pointer; font-size: 14px; color: var(--text); transition: background .15s;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .filter-btn:hover { background: var(--bg); }
-  .filter-btn.active { background: var(--purple-light); color: var(--purple); font-weight: 600; }
-  .filter-count {
-    font-size: 12px; background: var(--border); color: var(--muted);
-    padding: 1px 7px; border-radius: 10px;
-  }
-  .filter-btn.active .filter-count { background: var(--purple); color: white; }
+/* CARD & TABLE */
+.card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); overflow: hidden; }
+.card-header {
+  padding: 18px 24px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-header h3 { font-size: 15px; font-weight: 700; }
+.card-actions { display: flex; gap: 10px; align-items: center; }
+table { width: 100%; border-collapse: collapse; }
+th {
+  padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600;
+  color: var(--muted); background: #f8f9fc; border-bottom: 1px solid var(--border);
+  text-transform: uppercase; letter-spacing: .5px;
+}
+td { padding: 13px 16px; font-size: 14px; border-bottom: 1px solid #f0f2f8; vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: #fafbff; }
 
-  /* TICKET LIST */
-  .list-panel { flex: 1; overflow-y: auto; padding: 24px; }
-  .list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .list-header h2 { font-size: 18px; font-weight: 700; }
-  .refresh-btn {
-    background: none; border: 1px solid var(--border); padding: 7px 14px;
-    border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--muted); transition: all .2s;
-  }
-  .refresh-btn:hover { border-color: var(--purple); color: var(--purple); }
+/* BADGES */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+}
+.badge-success { background: var(--success-bg); color: var(--success); }
+.badge-danger  { background: var(--danger-bg); color: var(--danger); }
+.badge-warning { background: var(--warning-bg); color: var(--warning); }
+.badge-info    { background: var(--info-bg); color: var(--info); }
+.badge-gray    { background: #f3f4f6; color: var(--muted); }
+.badge-purple  { background: var(--purple-light); color: var(--purple); }
 
-  .ticket-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 16px 20px; margin-bottom: 10px; cursor: pointer; transition: all .2s;
-    border-left: 4px solid transparent;
-  }
-  .ticket-card:hover { border-color: var(--purple); box-shadow: 0 4px 12px rgba(83,74,183,.1); }
-  .ticket-card.selected { border-left-color: var(--purple); background: var(--purple-light); }
+/* INPUTS & BUTTONS */
+.search-input {
+  padding: 9px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+  font-size: 14px; outline: none; width: 240px; transition: border-color .2s;
+}
+.search-input:focus { border-color: var(--purple); }
+.btn {
+  padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600;
+  border: none; cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--purple); color: white; }
+.btn-primary:hover { background: var(--purple-dark); }
+.btn-danger { background: var(--danger-bg); color: var(--danger); }
+.btn-danger:hover { background: #fca5a5; }
+.btn-success { background: var(--success-bg); color: var(--success); }
+.btn-success:hover { background: #86efac; }
+.btn-ghost { background: #f3f4f6; color: var(--text); }
+.btn-ghost:hover { background: #e5e7eb; }
+.btn-sm { padding: 5px 11px; font-size: 12px; }
 
-  .tc-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-  .tc-subject { font-size: 15px; font-weight: 600; flex: 1; }
-  .tc-badges { display: flex; gap: 6px; flex-shrink: 0; }
-  .badge {
-    font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px;
-    white-space: nowrap;
-  }
-  .badge.open { background: var(--open-bg); color: var(--open); }
-  .badge.in_progress { background: var(--progress-bg); color: var(--progress); }
-  .badge.closed { background: var(--closed-bg); color: var(--closed); }
-  .badge.high { background: var(--high-bg); color: var(--high); }
-  .badge.normal { background: var(--normal-bg); color: var(--normal); }
-  .badge.low { background: var(--low-bg); color: var(--low); }
-  .badge.cat { background: #f3e8ff; color: #7c3aed; }
-  .badge.replied { background: #dcfce7; color: #16a34a; }
+/* PAGINATION */
+.pagination {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 20px; border-top: 1px solid var(--border);
+}
+.pagination span { font-size: 13px; color: var(--muted); }
+.pagination-btns { display: flex; gap: 6px; }
+.page-btn {
+  padding: 6px 12px; border-radius: 8px; border: 1.5px solid var(--border);
+  background: white; font-size: 13px; cursor: pointer; transition: all .15s;
+}
+.page-btn:hover { border-color: var(--purple); color: var(--purple); }
+.page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  .tc-meta { margin-top: 6px; font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
-  .tc-preview { margin-top: 8px; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* MODAL */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: white; border-radius: 20px; padding: 32px; width: 640px; max-height: 85vh;
+  overflow-y: auto; box-shadow: 0 24px 80px rgba(0,0,0,0.3);
+  transform: scale(0.95); transition: transform .2s;
+}
+.modal-overlay.open .modal { transform: scale(1); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.modal-header h3 { font-size: 18px; font-weight: 700; }
+.modal-close {
+  width: 32px; height: 32px; border-radius: 8px; background: #f3f4f6;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; border: none;
+}
+.modal-close:hover { background: #e5e7eb; }
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+.info-item label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; display: block; margin-bottom: 4px; }
+.info-item span { font-size: 14px; font-weight: 500; }
+.modal-section { margin-top: 20px; }
+.modal-section h4 { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
 
-  /* DETAIL PANEL */
-  .detail-panel {
-    width: 440px; background: var(--card); border-left: 1px solid var(--border);
-    overflow-y: auto; flex-shrink: 0; display: none; flex-direction: column;
-  }
-  .detail-panel.open { display: flex; }
+/* TICKET */
+.ticket-layout { display: grid; grid-template-columns: 300px 1fr; }
+.ticket-list { border-right: 1px solid var(--border); height: 600px; overflow-y: auto; }
+.ticket-item { padding: 14px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .15s; }
+.ticket-item:hover { background: #f8f9fc; }
+.ticket-item.selected { background: var(--purple-light); border-left: 3px solid var(--purple); }
+.ticket-item-subject { font-size: 14px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ticket-item-meta { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.ticket-detail { padding: 24px; height: 600px; overflow-y: auto; }
+.ticket-detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--muted); gap: 8px; }
 
-  .detail-header {
-    padding: 20px 24px 16px; border-bottom: 1px solid var(--border); position: sticky; top: 0;
-    background: var(--card); z-index: 10;
-  }
-  .detail-header h3 { font-size: 16px; font-weight: 700; margin-bottom: 10px; }
-  .detail-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+/* SETTINGS */
+.settings-section { max-width: 500px; }
+.settings-card { background: white; border-radius: 16px; padding: 28px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.settings-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.settings-card p { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+.settings-row { display: flex; gap: 12px; align-items: center; }
+.settings-row input { flex: 1; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 14px; outline: none; transition: border-color .2s; }
+.settings-row input:focus { border-color: var(--purple); }
 
-  .detail-body { padding: 20px 24px; flex: 1; }
-  .info-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
-  .info-row .key { color: var(--muted); }
-  .info-row .val { font-weight: 500; }
+/* FILTERS */
+.filter-bar { display: flex; gap: 8px; }
+.filter-btn {
+  padding: 7px 14px; border-radius: 8px; border: 1.5px solid var(--border);
+  background: white; font-size: 13px; cursor: pointer; transition: all .15s; font-weight: 500;
+}
+.filter-btn.active { border-color: var(--purple); background: var(--purple-light); color: var(--purple); }
+.filter-btn:hover:not(.active) { border-color: var(--muted); }
 
-  .section-title { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .8px; text-transform: uppercase; margin: 20px 0 8px; }
-  .message-box {
-    background: var(--bg); border-radius: 10px; padding: 14px; font-size: 14px;
-    line-height: 1.6; white-space: pre-wrap; border: 1px solid var(--border);
-  }
+/* MISC */
+.loading { text-align: center; padding: 48px; color: var(--muted); }
+.empty { text-align: center; padding: 48px; color: var(--muted); }
+.spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid #e5e7eb; border-top-color: var(--purple); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-  .admin-reply-box {
-    background: #f0fdf4; border-radius: 10px; padding: 14px; font-size: 14px;
-    line-height: 1.6; white-space: pre-wrap; border: 1px solid #bbf7d0; color: #166534;
-  }
+#toast {
+  position: fixed; bottom: 24px; right: 24px;
+  padding: 14px 20px; border-radius: 12px; font-size: 14px; font-weight: 500;
+  color: white; opacity: 0; transition: opacity .3s; z-index: 999;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+}
+#toast.show { opacity: 1; }
+#toast.success { background: var(--success); }
+#toast.error { background: var(--danger); }
 
-  .detail-footer {
-    padding: 20px 24px; border-top: 1px solid var(--border);
-    background: var(--card); position: sticky; bottom: 0;
-  }
-  .reply-textarea {
-    width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 10px;
-    font-size: 14px; font-family: inherit; resize: vertical; min-height: 90px; outline: none;
-    transition: border-color .2s;
-  }
-  .reply-textarea:focus { border-color: var(--purple); }
-
-  .footer-actions { display: flex; gap: 8px; margin-top: 10px; }
-  .btn {
-    padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
-    border: none; cursor: pointer; transition: all .2s;
-  }
-  .btn-primary { background: var(--purple); color: white; flex: 1; }
-  .btn-primary:hover { background: var(--purple-dark); }
-  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
-  .btn-success { background: #16a34a; color: white; }
-  .btn-success:hover { background: #15803d; }
-  .btn-outline { background: none; border: 1px solid var(--border); color: var(--text); }
-  .btn-outline:hover { border-color: var(--purple); color: var(--purple); }
-
-  .status-row { display: flex; gap: 6px; margin-top: 12px; }
-  .status-chip {
-    flex: 1; padding: 7px 8px; border-radius: 8px; font-size: 12px; font-weight: 600;
-    border: 2px solid transparent; cursor: pointer; text-align: center; transition: all .2s;
-  }
-  .status-chip.open { background: var(--open-bg); color: var(--open); }
-  .status-chip.open.active, .status-chip.open:hover { border-color: var(--open); }
-  .status-chip.in_progress { background: var(--progress-bg); color: var(--progress); }
-  .status-chip.in_progress.active, .status-chip.in_progress:hover { border-color: var(--progress); }
-  .status-chip.closed { background: var(--closed-bg); color: var(--closed); }
-  .status-chip.closed.active, .status-chip.closed:hover { border-color: var(--closed); }
-
-  .toast {
-    position: fixed; bottom: 24px; right: 24px; background: #1a1a2e; color: white;
-    padding: 12px 20px; border-radius: 10px; font-size: 14px; z-index: 9999;
-    opacity: 0; transition: opacity .3s; pointer-events: none;
-  }
-  .toast.show { opacity: 1; }
-  .toast.error { background: #dc2626; }
-
-  .empty { text-align: center; color: var(--muted); padding: 60px 20px; }
-  .empty-icon { font-size: 48px; margin-bottom: 12px; }
-
-  .close-detail {
-    position: absolute; right: 16px; top: 16px; background: none; border: none;
-    font-size: 20px; cursor: pointer; color: var(--muted); line-height: 1;
-  }
+.section { display: none; }
+.section.active { display: block; }
 </style>
 </head>
 <body>
@@ -233,342 +272,511 @@
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">
-      <h1>DeniKey</h1>
-      <p>Admin Paneli</p>
+      <div class="logo-icon">🔐</div>
+      <h1>DeniKey Admin</h1>
+      <p>Yönetim Paneli</p>
     </div>
-    <input type="password" id="admin-key-input" placeholder="Admin anahtarı" autocomplete="off">
-    <button onclick="doLogin()">Giriş Yap</button>
-    <div class="login-error" id="login-error">Hatalı anahtar</div>
+    <input type="password" id="admin-key-input" placeholder="Admin anahtarı" onkeydown="if(event.key==='Enter')login()">
+    <button onclick="login()">Giriş Yap</button>
+    <div id="login-error">Geçersiz admin anahtarı</div>
   </div>
 </div>
 
-<!-- MAIN -->
-<div id="main-screen">
-  <header>
-    <h1>DeniKey Admin</h1>
-    <span id="header-sub">Destek Talepleri</span>
-    <button class="logout-btn" onclick="logout()">Çıkış</button>
-  </header>
-
-  <div class="layout">
-    <!-- SIDEBAR -->
-    <div class="sidebar">
-      <div class="stats-grid">
-        <div class="stat-card">
-          <div class="num" id="stat-total">—</div>
-          <div class="lbl">Toplam</div>
-        </div>
-        <div class="stat-card open">
-          <div class="num" id="stat-open">—</div>
-          <div class="lbl">Açık</div>
-        </div>
-        <div class="stat-card progress">
-          <div class="num" id="stat-progress">—</div>
-          <div class="lbl">İşlemde</div>
-        </div>
-        <div class="stat-card closed">
-          <div class="num" id="stat-closed">—</div>
-          <div class="lbl">Kapalı</div>
-        </div>
+<!-- APP -->
+<div id="app">
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="logo-icon">🔐</div>
+        <div><span>DeniKey</span><small>Admin Paneli</small></div>
       </div>
-
-      <div class="filter-title">Filtre</div>
-      <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">
-        Tümü <span class="filter-count" id="fc-all">0</span>
-      </button>
-      <button class="filter-btn" data-filter="open" onclick="setFilter('open', this)">
-        Açık <span class="filter-count" id="fc-open">0</span>
-      </button>
-      <button class="filter-btn" data-filter="in_progress" onclick="setFilter('in_progress', this)">
-        İşlemde <span class="filter-count" id="fc-progress">0</span>
-      </button>
-      <button class="filter-btn" data-filter="closed" onclick="setFilter('closed', this)">
-        Kapalı <span class="filter-count" id="fc-closed">0</span>
-      </button>
     </div>
-
-    <!-- TICKET LIST -->
-    <div class="list-panel">
-      <div class="list-header">
-        <h2 id="list-title">Tüm Talepler</h2>
-        <button class="refresh-btn" onclick="loadTickets()">↻ Yenile</button>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" onclick="showSection('dashboard')" id="nav-dashboard">
+        <span class="nav-icon">📊</span> Dashboard
       </div>
-      <div id="ticket-list"></div>
+      <div class="nav-item" onclick="showSection('users')" id="nav-users">
+        <span class="nav-icon">👥</span> Kullanıcılar
+      </div>
+      <div class="nav-item" onclick="showSection('tickets')" id="nav-tickets">
+        <span class="nav-icon">🎫</span> Ticketlar
+        <span class="nav-badge" id="ticket-badge" style="display:none">0</span>
+      </div>
+      <div class="nav-item" onclick="showSection('audit')" id="nav-audit">
+        <span class="nav-icon">📋</span> Audit Log
+      </div>
+      <div class="nav-item" onclick="showSection('settings')" id="nav-settings">
+        <span class="nav-icon">⚙️</span> Ayarlar
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="logout-btn" onclick="logout()"><span>🚪</span> Çıkış Yap</div>
     </div>
+  </div>
 
-    <!-- DETAIL PANEL -->
-    <div class="detail-panel" id="detail-panel">
-      <div class="detail-header">
-        <button class="close-detail" onclick="closeDetail()">✕</button>
-        <h3 id="d-subject">—</h3>
-        <div class="detail-badges" id="d-badges"></div>
-      </div>
-      <div class="detail-body">
-        <div class="info-row"><span class="key">Kullanıcı</span><span class="val" id="d-email">—</span></div>
-        <div class="info-row"><span class="key">Kategori</span><span class="val" id="d-category">—</span></div>
-        <div class="info-row"><span class="key">Öncelik</span><span class="val" id="d-priority">—</span></div>
-        <div class="info-row"><span class="key">Tarih</span><span class="val" id="d-date">—</span></div>
-        <div class="info-row"><span class="key">Yanıt tarihi</span><span class="val" id="d-replied">—</span></div>
+  <div class="main">
+    <div class="main-header">
+      <h2 id="section-title">Dashboard</h2>
+      <span class="header-meta" id="header-meta"></span>
+    </div>
+    <div class="content">
 
-        <div class="section-title">Mesaj</div>
-        <div class="message-box" id="d-message">—</div>
-
-        <div id="d-reply-section" style="display:none">
-          <div class="section-title">Önceki Yanıt</div>
-          <div class="admin-reply-box" id="d-reply-text">—</div>
+      <!-- DASHBOARD -->
+      <div id="section-dashboard" class="section active">
+        <div class="stats-grid" id="stats-grid">
+          <div class="loading"><div class="spinner"></div></div>
         </div>
       </div>
-      <div class="detail-footer">
-        <textarea class="reply-textarea" id="reply-textarea" placeholder="Kullanıcıya yanıtınızı yazın..."></textarea>
-        <div class="footer-actions">
-          <button class="btn btn-primary" onclick="sendReply(false)" id="reply-btn">Yanıt Gönder</button>
-          <button class="btn btn-success" onclick="sendReply(true)" title="Yanıtla ve kapat">✓ Gönder & Kapat</button>
-        </div>
-        <div class="status-row">
-          <div class="status-chip open" onclick="changeStatus('open')">Açık</div>
-          <div class="status-chip in_progress" onclick="changeStatus('in_progress')">İşlemde</div>
-          <div class="status-chip closed" onclick="changeStatus('closed')">Kapalı</div>
+
+      <!-- USERS -->
+      <div id="section-users" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h3>Kullanıcılar</h3>
+            <div class="card-actions">
+              <input class="search-input" type="text" id="user-search" placeholder="Kullanıcı veya e-posta ara..." oninput="debounceUserSearch()">
+            </div>
+          </div>
+          <div id="users-table-wrap"><div class="loading"><div class="spinner"></div></div></div>
+          <div class="pagination" id="users-pagination" style="display:none">
+            <span id="users-count"></span>
+            <div class="pagination-btns">
+              <button class="page-btn" id="users-prev" onclick="changeUsersPage(-1)">← Önceki</button>
+              <button class="page-btn" id="users-next" onclick="changeUsersPage(1)">Sonraki →</button>
+            </div>
+          </div>
         </div>
       </div>
+
+      <!-- TICKETS -->
+      <div id="section-tickets" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h3>Support Ticketları</h3>
+            <div class="card-actions">
+              <div class="filter-bar">
+                <button class="filter-btn active" onclick="setTicketFilter('all',this)">Tümü</button>
+                <button class="filter-btn" onclick="setTicketFilter('open',this)">Açık</button>
+                <button class="filter-btn" onclick="setTicketFilter('in_progress',this)">İşlemde</button>
+                <button class="filter-btn" onclick="setTicketFilter('closed',this)">Kapalı</button>
+              </div>
+            </div>
+          </div>
+          <div class="ticket-layout">
+            <div class="ticket-list" id="ticket-list"><div class="loading"><div class="spinner"></div></div></div>
+            <div class="ticket-detail" id="ticket-detail">
+              <div class="ticket-detail-empty"><span style="font-size:32px">🎫</span><span>Bir ticket seçin</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AUDIT LOG -->
+      <div id="section-audit" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h3>Audit Log</h3>
+            <div class="card-actions">
+              <input class="search-input" type="text" id="audit-user-filter" placeholder="Kullanıcı ID ile filtrele..." style="width:280px" onkeydown="if(event.key==='Enter')loadAuditLogs()">
+              <button class="btn btn-ghost" onclick="loadAuditLogs()">Filtrele</button>
+            </div>
+          </div>
+          <div id="audit-table-wrap"><div class="loading"><div class="spinner"></div></div></div>
+          <div class="pagination" id="audit-pagination" style="display:none">
+            <span id="audit-count"></span>
+            <div class="pagination-btns">
+              <button class="page-btn" id="audit-prev" onclick="changeAuditPage(-1)">← Önceki</button>
+              <button class="page-btn" id="audit-next" onclick="changeAuditPage(1)">Sonraki →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SETTINGS -->
+      <div id="section-settings" class="section">
+        <div class="settings-section">
+          <div class="settings-card">
+            <h3>Minimum Uygulama Versiyonu</h3>
+            <p>Bu versiyonun altındaki istemciler zorunlu güncelleme ekranı görecek. Değişiklik anında yürürlüğe girer.</p>
+            <div class="settings-row">
+              <input type="text" id="version-input" placeholder="örn. 3.1.5">
+              <button class="btn btn-primary" onclick="saveVersion()">Kaydet</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
 
-<div class="toast" id="toast"></div>
+<!-- USER DETAIL MODAL -->
+<div class="modal-overlay" id="user-modal" onclick="if(event.target===this)closeUserModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-username">Kullanıcı Detayı</h3>
+      <button class="modal-close" onclick="closeUserModal()">✕</button>
+    </div>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
 
 <script>
 const API = '/api/v1';
-let adminKey = '';
-let tickets = [];
-let currentFilter = 'all';
-let selectedId = null;
+let APP_KEY = '';
+let usersPage = 0, usersTotal = 0, userSearchVal = '';
+let auditPage = 0, auditTotal = 0;
+let ticketFilter = 'all', selectedTicketId = null;
+let debounceTimer = null;
+let _tickets = [];
 
-const CAT_MAP = { bug: 'Hata', suggestion: 'Öneri', other: 'Diğer' };
-const PRI_MAP = { low: 'Düşük', normal: 'Normal', high: 'Yüksek' };
-const STATUS_MAP = { open: 'Açık', in_progress: 'İşlemde', closed: 'Kapalı' };
-
-// --- AUTH ---
-async function doLogin() {
+// AUTH
+async function login() {
   const key = document.getElementById('admin-key-input').value.trim();
   if (!key) return;
-  try {
-    const r = await fetch(`${API}/admin/tickets/stats`, { headers: { 'X-Admin-Key': key } });
-    if (!r.ok) throw new Error();
-    adminKey = key;
-    sessionStorage.setItem('dk_admin_key', key);
-    showMain();
-  } catch {
-    document.getElementById('login-error').style.display = 'block';
-  }
+  const r = await fetch(`${API}/admin/dashboard`, { headers: { 'X-Admin-Key': key } }).catch(() => null);
+  if (!r || r.status === 401) { document.getElementById('login-error').style.display = 'block'; return; }
+  APP_KEY = key;
+  sessionStorage.setItem('adminKey', key);
+  document.getElementById('login-error').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  loadDashboard();
+  loadTicketBadge();
 }
 
 function logout() {
-  adminKey = '';
-  sessionStorage.removeItem('dk_admin_key');
-  document.getElementById('main-screen').style.display = 'none';
+  APP_KEY = ''; sessionStorage.removeItem('adminKey');
+  document.getElementById('app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('admin-key-input').value = '';
 }
 
-document.getElementById('admin-key-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-
-// --- INIT ---
-async function showMain() {
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('main-screen').style.display = 'block';
-  await loadStats();
-  await loadTickets();
+async function apiFetch(path, method = 'GET', body = null) {
+  const opts = { method, headers: { 'X-Admin-Key': APP_KEY, 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(`${API}${path}`, opts);
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.detail || 'Hata'); }
+  return r.json();
 }
 
-async function loadStats() {
+// NAV
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(`section-${name}`).classList.add('active');
+  document.getElementById(`nav-${name}`).classList.add('active');
+  const titles = { dashboard:'Dashboard', users:'Kullanıcılar', tickets:'Ticketlar', audit:'Audit Log', settings:'Ayarlar' };
+  document.getElementById('section-title').textContent = titles[name];
+  document.getElementById('header-meta').textContent = new Date().toLocaleDateString('tr-TR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+  if (name === 'dashboard') loadDashboard();
+  else if (name === 'users') { usersPage = 0; loadUsers(); }
+  else if (name === 'tickets') loadTickets();
+  else if (name === 'audit') { auditPage = 0; loadAuditLogs(); }
+  else if (name === 'settings') loadSettings();
+}
+
+// DASHBOARD
+async function loadDashboard() {
+  const g = document.getElementById('stats-grid');
+  g.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
   try {
-    const r = await apiFetch('/admin/tickets/stats');
-    const s = await r.json();
-    document.getElementById('stat-total').textContent = s.total;
-    document.getElementById('stat-open').textContent = s.open;
-    document.getElementById('stat-progress').textContent = s.in_progress;
-    document.getElementById('stat-closed').textContent = s.closed;
-    document.getElementById('fc-all').textContent = s.total;
-    document.getElementById('fc-open').textContent = s.open;
-    document.getElementById('fc-progress').textContent = s.in_progress;
-    document.getElementById('fc-closed').textContent = s.closed;
-  } catch {}
+    const d = await apiFetch('/admin/dashboard');
+    g.innerHTML = [
+      statCard('👥', d.total_users, 'Toplam Kullanıcı', 'purple'),
+      statCard('✅', d.verified_users, 'Doğrulanmış', 'green'),
+      statCard('🔒', d.locked_users, 'Kilitli Hesap', 'red'),
+      statCard('🆕', d.today_registered, 'Bugün Kayıt', 'blue'),
+      statCard('🗄️', d.total_vault_items, 'Vault Öğesi', 'gray'),
+      statCard('🎫', d.open_tickets, 'Açık Ticket', 'yellow'),
+    ].join('');
+  } catch(e) { g.innerHTML = `<div class="empty">Veri yüklenemedi</div>`; }
+}
+
+function statCard(icon, value, label, color) {
+  return `<div class="stat-card"><div class="stat-icon ${color}">${icon}</div><div><div class="stat-value">${value ?? '-'}</div><div class="stat-label">${label}</div></div></div>`;
+}
+
+// USERS
+function debounceUserSearch() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => { usersPage = 0; userSearchVal = document.getElementById('user-search').value; loadUsers(); }, 400);
+}
+
+async function loadUsers() {
+  const wrap = document.getElementById('users-table-wrap');
+  wrap.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const q = new URLSearchParams({ page: usersPage });
+    if (userSearchVal) q.set('search', userSearchVal);
+    const d = await apiFetch(`/admin/users?${q}`);
+    usersTotal = d.total;
+    if (!d.users.length) {
+      wrap.innerHTML = '<div class="empty">Kullanıcı bulunamadı</div>';
+      document.getElementById('users-pagination').style.display = 'none'; return;
+    }
+    wrap.innerHTML = `<table><thead><tr><th>Kullanıcı</th><th>E-posta</th><th>Durum</th><th>Auth</th><th>Kayıt</th><th></th></tr></thead><tbody>
+      ${d.users.map(u => `<tr>
+        <td><strong>${esc(u.username)}</strong>${u.full_name ? `<br><small style="color:var(--muted)">${esc(u.full_name)}</small>` : ''}</td>
+        <td style="color:var(--muted);font-size:13px">${esc(u.email || '-')}</td>
+        <td>${userStatusBadge(u)}</td>
+        <td><span class="badge badge-gray">v${u.auth_hash_version}</span>${u.totp_enabled ? ' <span class="badge badge-purple">TOTP</span>' : ''}</td>
+        <td style="color:var(--muted);font-size:12px">${fmtDate(u.created_at)}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="openUserModal('${u.id}')">Detay →</button></td>
+      </tr>`).join('')}</tbody></table>`;
+    const pg = document.getElementById('users-pagination');
+    pg.style.display = 'flex';
+    document.getElementById('users-count').textContent = `${usersPage*20+1}–${Math.min((usersPage+1)*20, usersTotal)} / ${usersTotal} kullanıcı`;
+    document.getElementById('users-prev').disabled = usersPage === 0;
+    document.getElementById('users-next').disabled = (usersPage+1)*20 >= usersTotal;
+  } catch(e) { wrap.innerHTML = `<div class="empty">Hata: ${e.message}</div>`; }
+}
+
+function userStatusBadge(u) {
+  if (u.is_locked) return '<span class="badge badge-danger">🔒 Kilitli</span>';
+  if (!u.is_verified) return '<span class="badge badge-warning">⏳ Bekliyor</span>';
+  return '<span class="badge badge-success">✅ Aktif</span>';
+}
+
+function changeUsersPage(dir) { usersPage = Math.max(0, usersPage + dir); loadUsers(); }
+
+async function openUserModal(userId) {
+  document.getElementById('user-modal').classList.add('open');
+  document.getElementById('modal-username').textContent = 'Yükleniyor...';
+  document.getElementById('modal-content').innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const u = await apiFetch(`/admin/users/${userId}`);
+    document.getElementById('modal-username').textContent = u.username;
+    document.getElementById('modal-content').innerHTML = `
+      <div class="info-grid">
+        <div class="info-item"><label>E-posta</label><span>${esc(u.email||'-')}</span></div>
+        <div class="info-item"><label>Ad Soyad</label><span>${esc(u.full_name||'-')}</span></div>
+        <div class="info-item"><label>Durum</label><span>${userStatusBadge(u)}</span></div>
+        <div class="info-item"><label>TOTP</label><span>${u.totp_enabled ? '<span class="badge badge-success">Aktif</span>' : '<span class="badge badge-gray">Kapalı</span>'}</span></div>
+        <div class="info-item"><label>Auth Versiyonu</label><span class="badge badge-gray">v${u.auth_hash_version}</span></div>
+        <div class="info-item"><label>Başarısız Giriş</label><span>${u.failed_attempts}</span></div>
+        <div class="info-item"><label>Vault Öğesi</label><span>${u.vault_item_count}</span></div>
+        <div class="info-item"><label>Kayıt Tarihi</label><span>${fmtDate(u.created_at)}</span></div>
+      </div>
+      ${u.devices.length ? `<div class="modal-section"><h4>Cihazlar (${u.devices.length})</h4>
+        <table><thead><tr><th>Cihaz</th><th>Tip</th><th>Durum</th><th>Son Aktif</th><th>IP</th></tr></thead>
+        <tbody>${u.devices.map(d => `<tr>
+          <td>${esc(d.display_name||'-')}</td>
+          <td style="color:var(--muted)">${esc(d.device_type||'-')}</td>
+          <td>${deviceBadge(d.status, d.is_trusted)}</td>
+          <td style="font-size:12px;color:var(--muted)">${fmtDate(d.last_active_at)}</td>
+          <td style="font-size:12px;color:var(--muted)">${esc(d.ip_address||'-')}</td>
+        </tr>`).join('')}</tbody></table></div>` : ''}
+      ${u.recent_logs.length ? `<div class="modal-section"><h4>Son İşlemler</h4>
+        <table><thead><tr><th>İşlem</th><th>Durum</th><th>IP</th><th>Tarih</th></tr></thead>
+        <tbody>${u.recent_logs.map(l => `<tr>
+          <td><span class="badge badge-purple">${esc(l.action)}</span></td>
+          <td>${l.status==='success' ? '<span class="badge badge-success">✓</span>' : '<span class="badge badge-danger">✗</span>'}</td>
+          <td style="font-size:12px;color:var(--muted)">${esc(l.ip_address||'-')}</td>
+          <td style="font-size:12px;color:var(--muted)">${fmtDate(l.created_at)}</td>
+        </tr>`).join('')}</tbody></table></div>` : ''}
+      <div class="modal-actions">
+        ${u.is_locked
+          ? `<button class="btn btn-success" onclick="userAction('${u.id}','unban')">🔓 Kilidi Kaldır</button>`
+          : `<button class="btn btn-danger" onclick="userAction('${u.id}','ban')">🔒 Hesabı Kilitle</button>`}
+        <button class="btn btn-danger" style="margin-left:auto" onclick="userAction('${u.id}','delete')">🗑️ Hesabı Sil</button>
+      </div>`;
+  } catch(e) { document.getElementById('modal-content').innerHTML = `<div class="empty">Hata: ${e.message}</div>`; }
+}
+
+function deviceBadge(status, trusted) {
+  if (status === 'banned') return '<span class="badge badge-danger">Yasaklı</span>';
+  if (status === 'revoked') return '<span class="badge badge-gray">İptal</span>';
+  if (trusted) return '<span class="badge badge-success">Güvenilir</span>';
+  return '<span class="badge badge-info">Aktif</span>';
+}
+
+async function userAction(userId, action) {
+  const msgs = { ban:'Bu kullanıcıyı kilitlemek istiyor musunuz?', unban:'Kilidi kaldırmak istiyor musunuz?', delete:'Bu hesabı kalıcı olarak silmek istiyor musunuz? Bu işlem geri alınamaz.' };
+  if (!confirm(msgs[action])) return;
+  try {
+    if (action === 'ban') await apiFetch(`/admin/users/${userId}/ban`, 'POST');
+    else if (action === 'unban') await apiFetch(`/admin/users/${userId}/unban`, 'POST');
+    else await apiFetch(`/admin/users/${userId}`, 'DELETE');
+    showToast(action==='delete' ? 'Kullanıcı silindi' : action==='ban' ? 'Hesap kilitlendi' : 'Kilit kaldırıldı', 'success');
+    closeUserModal(); loadUsers(); loadDashboard();
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
+function closeUserModal() { document.getElementById('user-modal').classList.remove('open'); }
+
+// TICKETS
+function setTicketFilter(f, btn) {
+  ticketFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedTicketId = null; loadTickets();
 }
 
 async function loadTickets() {
-  const url = currentFilter === 'all' ? '/admin/tickets' : `/admin/tickets?status_filter=${currentFilter}`;
+  const list = document.getElementById('ticket-list');
+  list.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  document.getElementById('ticket-detail').innerHTML = '<div class="ticket-detail-empty"><span style="font-size:32px">🎫</span><span>Bir ticket seçin</span></div>';
   try {
-    const r = await apiFetch(url);
-    tickets = await r.json();
-    renderList();
-  } catch {
-    showToast('Talepler yüklenemedi', true);
-  }
+    const q = ticketFilter !== 'all' ? `?status_filter=${ticketFilter}` : '';
+    _tickets = await apiFetch(`/admin/tickets${q}`);
+    if (!_tickets.length) { list.innerHTML = '<div class="empty">Ticket bulunamadı</div>'; return; }
+    list.innerHTML = _tickets.map(t => `
+      <div class="ticket-item" data-id="${t.id}" onclick="selectTicket('${t.id}')">
+        <div class="ticket-item-subject">${esc(t.subject)}</div>
+        <div class="ticket-item-meta">${ticketStatusBadge(t.status)}<span>${fmtDate(t.created_at)}</span></div>
+      </div>`).join('');
+  } catch(e) { list.innerHTML = `<div class="empty">Hata: ${e.message}</div>`; }
 }
 
-// --- FILTER ---
-function setFilter(f, btn) {
-  currentFilter = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  const titles = { all: 'Tüm Talepler', open: 'Açık Talepler', in_progress: 'İşlemdeki Talepler', closed: 'Kapalı Talepler' };
-  document.getElementById('list-title').textContent = titles[f];
-  closeDetail();
-  loadTickets();
+async function loadTicketBadge() {
+  try {
+    const s = await apiFetch('/admin/tickets/stats');
+    const b = document.getElementById('ticket-badge');
+    if (s.open > 0) { b.textContent = s.open; b.style.display = 'inline-block'; } else b.style.display = 'none';
+  } catch(e) {}
 }
 
-// --- RENDER LIST ---
-function renderList() {
-  const el = document.getElementById('ticket-list');
-  if (!tickets.length) {
-    el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div>Bu filtre için talep yok</div></div>';
-    return;
-  }
-  el.innerHTML = tickets.map(t => `
-    <div class="ticket-card ${t.id === selectedId ? 'selected' : ''}" onclick="selectTicket('${t.id}')">
-      <div class="tc-top">
-        <div class="tc-subject">${esc(t.subject)}</div>
-        <div class="tc-badges">
-          <span class="badge ${t.status}">${STATUS_MAP[t.status] || esc(t.status)}</span>
-          <span class="badge ${t.priority}">${PRI_MAP[t.priority] || esc(t.priority)}</span>
-          ${t.admin_reply ? '<span class="badge replied">✓ Yanıtlandı</span>' : ''}
+function ticketStatusBadge(s) {
+  if (s === 'open') return '<span class="badge badge-info">Açık</span>';
+  if (s === 'in_progress') return '<span class="badge badge-warning">İşlemde</span>';
+  if (s === 'closed') return '<span class="badge badge-success">Kapalı</span>';
+  return `<span class="badge badge-gray">${esc(s)}</span>`;
+}
+
+function selectTicket(id) {
+  selectedTicketId = id;
+  document.querySelectorAll('.ticket-item').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
+  const t = _tickets.find(x => x.id === id);
+  if (t) renderTicketDetail(t);
+}
+
+function renderTicketDetail(t) {
+  document.getElementById('ticket-detail').innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:17px;font-weight:700;margin-bottom:8px">${esc(t.subject)}</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)">
+          ${esc(t.user_email)} · ${ticketStatusBadge(t.status)}
+          <span class="badge ${t.priority==='high'?'badge-danger':t.priority==='normal'?'badge-info':'badge-gray'}">${esc(t.priority)}</span>
         </div>
       </div>
-      <div class="tc-meta">
-        <span>👤 ${esc(t.user_email)}</span>
-        <span class="badge cat">${CAT_MAP[t.category] || esc(t.category)}</span>
-        <span>${formatDate(t.created_at)}</span>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="changeStatus('open')">Aç</button>
+        <button class="btn btn-ghost btn-sm" onclick="changeStatus('in_progress')">İşlemde</button>
+        <button class="btn btn-ghost btn-sm" onclick="changeStatus('closed')">Kapat</button>
       </div>
-      <div class="tc-preview">${esc(t.message)}</div>
     </div>
-  `).join('');
+    <div style="background:#f8f9fc;border-radius:12px;padding:16px;margin-bottom:20px;font-size:14px;line-height:1.6;white-space:pre-wrap">${esc(t.message)}</div>
+    ${t.admin_reply ? `<div style="background:var(--purple-light);border-radius:12px;padding:16px;margin-bottom:20px">
+      <div style="font-size:11px;font-weight:700;color:var(--purple);margin-bottom:8px">ÖNCEKİ YANIT</div>
+      <div style="font-size:14px;line-height:1.6">${esc(t.admin_reply)}</div>
+    </div>` : ''}
+    <textarea id="reply-box" placeholder="Yanıt yaz..." style="width:100%;height:100px;padding:12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;resize:vertical;outline:none;font-family:inherit"></textarea>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="btn btn-primary" onclick="sendReply(false)">Gönder</button>
+      <button class="btn btn-success" onclick="sendReply(true)">Gönder ve Kapat</button>
+    </div>`;
 }
 
-// --- DETAIL ---
-function selectTicket(id) {
-  selectedId = id;
-  const t = tickets.find(x => x.id === id);
-  if (!t) return;
-  renderList();
-
-  document.getElementById('d-subject').textContent = t.subject;
-  document.getElementById('d-email').textContent = t.user_email;
-  document.getElementById('d-category').textContent = CAT_MAP[t.category] || esc(t.category);
-  document.getElementById('d-priority').textContent = PRI_MAP[t.priority] || esc(t.priority);
-  document.getElementById('d-date').textContent = formatDate(t.created_at);
-  document.getElementById('d-replied').textContent = t.replied_at ? formatDate(t.replied_at) : '—';
-  document.getElementById('d-message').textContent = t.message;
-
-  document.getElementById('d-badges').innerHTML = `
-    <span class="badge ${t.status}">${STATUS_MAP[t.status] || esc(t.status)}</span>
-    <span class="badge ${t.priority}">${PRI_MAP[t.priority] || esc(t.priority)}</span>
-    <span class="badge cat">${CAT_MAP[t.category] || esc(t.category)}</span>
-  `;
-
-  const replySection = document.getElementById('d-reply-section');
-  if (t.admin_reply) {
-    replySection.style.display = 'block';
-    document.getElementById('d-reply-text').textContent = t.admin_reply;
-    document.getElementById('reply-textarea').value = t.admin_reply;
-  } else {
-    replySection.style.display = 'none';
-    document.getElementById('reply-textarea').value = '';
-  }
-
-  // Status chips
-  document.querySelectorAll('.status-chip').forEach(c => {
-    c.classList.toggle('active', c.classList.contains(t.status));
-  });
-
-  document.getElementById('detail-panel').classList.add('open');
-}
-
-function closeDetail() {
-  selectedId = null;
-  document.getElementById('detail-panel').classList.remove('open');
-  renderList();
-}
-
-// --- ACTIONS ---
 async function sendReply(closeAfter) {
-  const reply = document.getElementById('reply-textarea').value.trim();
-  if (!reply) { showToast('Yanıt boş olamaz', true); return; }
-  if (!selectedId) return;
-
-  const btn = document.getElementById('reply-btn');
-  btn.disabled = true;
-  btn.textContent = 'Gönderiliyor...';
+  const reply = document.getElementById('reply-box').value.trim();
+  if (!reply || !selectedTicketId) return;
   try {
-    const r = await apiFetch(`/admin/tickets/${selectedId}/reply`, 'POST', { reply, close_after: closeAfter });
-    if (!r.ok) throw new Error();
-    const updated = await r.json();
-    updateTicket(updated);
-    showToast(closeAfter ? 'Yanıt gönderildi ve talep kapatıldı ✓' : 'Yanıt gönderildi ✓');
-    selectTicket(selectedId);
-  } catch {
-    showToast('Gönderilemedi', true);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Yanıt Gönder';
-  }
+    await apiFetch(`/admin/tickets/${selectedTicketId}/reply`, 'POST', { reply, close_after: closeAfter });
+    showToast('Yanıt gönderildi', 'success'); loadTickets(); loadTicketBadge();
+  } catch(e) { showToast(e.message, 'error'); }
 }
 
-async function changeStatus(newStatus) {
-  if (!selectedId) return;
+async function changeStatus(status) {
+  if (!selectedTicketId) return;
   try {
-    const r = await apiFetch(`/admin/tickets/${selectedId}/status`, 'PATCH', { status: newStatus });
-    if (!r.ok) throw new Error();
-    const updated = await r.json();
-    updateTicket(updated);
-    showToast('Durum güncellendi');
-    selectTicket(selectedId);
-    loadStats();
-  } catch {
-    showToast('Güncellenemedi', true);
-  }
+    await apiFetch(`/admin/tickets/${selectedTicketId}/status`, 'PATCH', { status });
+    showToast('Durum güncellendi', 'success'); loadTickets(); loadTicketBadge();
+  } catch(e) { showToast(e.message, 'error'); }
 }
 
-function updateTicket(updated) {
-  const idx = tickets.findIndex(t => t.id === updated.id);
-  if (idx !== -1) tickets[idx] = updated;
-  renderList();
+// AUDIT LOG
+async function loadAuditLogs() {
+  const wrap = document.getElementById('audit-table-wrap');
+  wrap.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  try {
+    const userId = document.getElementById('audit-user-filter').value.trim();
+    const q = new URLSearchParams({ page: auditPage });
+    if (userId) q.set('user_id', userId);
+    const d = await apiFetch(`/admin/audit-logs?${q}`);
+    auditTotal = d.total;
+    if (!d.logs.length) {
+      wrap.innerHTML = '<div class="empty">Kayıt bulunamadı</div>';
+      document.getElementById('audit-pagination').style.display = 'none'; return;
+    }
+    wrap.innerHTML = `<table><thead><tr><th>Tarih</th><th>Kullanıcı</th><th>İşlem</th><th>Durum</th><th>IP</th></tr></thead>
+      <tbody>${d.logs.map(l => `<tr>
+        <td style="font-size:12px;color:var(--muted);white-space:nowrap">${fmtDate(l.created_at)}</td>
+        <td><div style="font-size:13px;font-weight:600">${esc(l.username||'-')}</div><div style="font-size:11px;color:var(--muted)">${esc(l.email||'')}</div></td>
+        <td><span class="badge badge-purple">${esc(l.action)}</span></td>
+        <td>${l.status==='success' ? '<span class="badge badge-success">✓ Başarılı</span>' : '<span class="badge badge-danger">✗ Başarısız</span>'}</td>
+        <td style="font-size:12px;color:var(--muted)">${esc(l.ip_address||'-')}</td>
+      </tr>`).join('')}</tbody></table>`;
+    const pg = document.getElementById('audit-pagination');
+    pg.style.display = 'flex';
+    document.getElementById('audit-count').textContent = `${auditPage*50+1}–${Math.min((auditPage+1)*50, auditTotal)} / ${auditTotal} kayıt`;
+    document.getElementById('audit-prev').disabled = auditPage === 0;
+    document.getElementById('audit-next').disabled = (auditPage+1)*50 >= auditTotal;
+  } catch(e) { wrap.innerHTML = `<div class="empty">Hata: ${e.message}</div>`; }
 }
 
-// --- UTILS ---
-function apiFetch(path, method = 'GET', body = null) {
-  const opts = { method, headers: { 'X-Admin-Key': adminKey, 'Content-Type': 'application/json' } };
-  if (body) opts.body = JSON.stringify(body);
-  return fetch(`${API}${path}`, opts);
+function changeAuditPage(dir) { auditPage = Math.max(0, auditPage + dir); loadAuditLogs(); }
+
+// SETTINGS
+async function loadSettings() {
+  try {
+    const d = await apiFetch('/admin/version');
+    document.getElementById('version-input').value = d.version;
+  } catch(e) {}
 }
 
+async function saveVersion() {
+  const v = document.getElementById('version-input').value.trim();
+  if (!v) return;
+  try {
+    await apiFetch('/admin/version', 'PUT', { version: v });
+    showToast('Versiyon güncellendi: ' + v, 'success');
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
+// HELPERS
 function esc(s) {
-  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function formatDate(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+function fmtDate(iso) {
+  if (!iso) return '-';
+  return new Date(iso).toLocaleString('tr-TR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
-let toastTimer;
-function showToast(msg, isError = false) {
+function showToast(msg, type = 'success') {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show' + (isError ? ' error' : '');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.className = 'toast', 2800);
+  t.textContent = msg; t.className = `show ${type}`;
+  setTimeout(() => { t.className = ''; }, 3000);
 }
 
-// --- AUTO LOGIN ---
-window.onload = () => {
-  const saved = sessionStorage.getItem('dk_admin_key');
-  if (saved) {
-    adminKey = saved;
-    fetch(`${API}/admin/tickets/stats`, { headers: { 'X-Admin-Key': saved } })
-      .then(r => r.ok ? showMain() : null)
-      .catch(() => {});
-  }
-};
+// INIT — sessionStorage'dan key varsa otomatik giriş dene
+const savedKey = sessionStorage.getItem('adminKey');
+if (savedKey) {
+  fetch(`${API}/admin/dashboard`, { headers: { 'X-Admin-Key': savedKey } }).then(r => {
+    if (r.ok) {
+      APP_KEY = savedKey;
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      loadDashboard();
+      loadTicketBadge();
+    }
+  });
+}
 </script>
 </body>
 </html>
