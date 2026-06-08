@@ -116,9 +116,6 @@ async def health():
 
 @app.get("/admin", response_class=HTMLResponse)
 async def admin_panel(request: Request):
-    key = request.headers.get("x-admin-key", "") or request.query_params.get("key", "")
-    if not key or not secrets.compare_digest(key.encode(), settings.ADMIN_SECRET_KEY.encode()):
-        raise HTTPException(status_code=401, detail="Erişim reddedildi")
     html_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "admin.html")
     with open(html_path, "r", encoding="utf-8") as f:
         return f.read()
