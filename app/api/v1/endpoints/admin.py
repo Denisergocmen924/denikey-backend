@@ -24,7 +24,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 def _require_admin(x_admin_key: str = Header(...)):
-    if not secrets.compare_digest(x_admin_key, settings.ADMIN_SECRET_KEY):
+    if not secrets.compare_digest(x_admin_key.encode(), settings.ADMIN_SECRET_KEY.encode()):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Geçersiz admin anahtarı")
 
 
