@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+import uuid
 from app.db.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
@@ -23,20 +24,20 @@ async def list_trash(
 
 @router.post("/{trash_id}/restore")
 async def restore_item(
-    trash_id: str,
+    trash_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await restore_trash_item(db, trash_id, current_user)
+    return await restore_trash_item(db, str(trash_id), current_user)
 
 
 @router.delete("/{trash_id}")
 async def delete_item(
-    trash_id: str,
+    trash_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await delete_trash_item(db, trash_id, current_user)
+    return await delete_trash_item(db, str(trash_id), current_user)
 
 
 @router.delete("/")

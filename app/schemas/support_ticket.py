@@ -1,13 +1,13 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field
+from typing import Optional, Literal
 from datetime import datetime
 
 
 class SupportTicketCreate(BaseModel):
-    category: str        # bug, suggestion, other
-    subject: str
-    message: str
-    priority: str = "normal"  # low, normal, high
+    category: Literal["bug", "suggestion", "other"]
+    subject: str = Field(..., max_length=200)
+    message: str = Field(..., max_length=5000)
+    priority: Literal["low", "normal", "high"] = "normal"
 
 
 class SupportTicketResponse(BaseModel):

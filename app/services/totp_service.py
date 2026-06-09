@@ -1,10 +1,10 @@
 import hashlib
-import base64
 import pyotp
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 from fastapi import HTTPException
 
 from app.core.config import settings
@@ -65,10 +65,12 @@ async def enable_totp(db: AsyncSession, user: User, secret: str, code: str) -> N
     await db.flush()
 
 
-async def disable_totp(db: AsyncSession, user: User, auth_verifier: str) -> None:
-    """TOTP'u devre dışı bırakır: verifier doğrulaması gerekir."""
+async def disable_totp(db: AsyncSession, user: User, auth_verifier: str, totp_code: str) -> None:
+    """TOTP'u devre dışı bırakır: verifier ve geçerli TOTP kodu gerekir."""
     if not verify_auth_verifier(auth_verifier, user.password_hash):
         raise HTTPException(status_code=401, detail="Master password hatalı")
+    if not user.totp_secret or not verify_totp_code(user.totp_secret, totp_code):
+        raise HTTPException(status_code=400, detail="Geçersiz TOTP kodu")
 
     user.totp_secret = None
     user.totp_enabled = False
@@ -106,5 +108,5 @@ def verify_totp_temp_token(token: str) -> Optional[dict]:
         if payload.get("type") != "totp_pending":
             return None
         return payload
-    except JWTError:
+    except PyJWTError:
         return None

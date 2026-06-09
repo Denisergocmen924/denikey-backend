@@ -10,16 +10,6 @@ from app.services.device_service import update_device_last_active, get_device_st
 security = HTTPBearer()
 
 
-async def get_current_device_id(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-) -> str:
-    """JWT içindeki cihaz kimliğini döndürür."""
-    payload = verify_access_token(credentials.credentials)
-    if not payload:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Geçersiz token")
-    return payload.get("did", "")
-
-
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: AsyncSession = Depends(get_db)
@@ -77,3 +67,14 @@ async def get_current_user(
         await update_device_last_active(db, user_id, device_id)
 
     return user
+
+
+async def get_current_device_id(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    _verified_user: User = Depends(get_current_user),
+) -> str:
+    """JWT içindeki cihaz kimliğini döndürür; doğrulama get_current_user üzerinden yapılır."""
+    payload = verify_access_token(credentials.credentials)
+    if not payload:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Geçersiz token")
+    return payload.get("did", "")

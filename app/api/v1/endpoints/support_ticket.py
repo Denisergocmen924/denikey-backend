@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+import uuid
 from app.db.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
@@ -35,26 +36,26 @@ async def get_support_tickets(
 
 @router.get("/{ticket_id}", response_model=SupportTicketResponse)
 async def get_support_ticket(
-    ticket_id: str,
+    ticket_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await get_ticket(db, ticket_id, current_user)
+    return await get_ticket(db, str(ticket_id), current_user)
 
 
 @router.patch("/{ticket_id}/close", response_model=SupportTicketResponse)
 async def close_support_ticket(
-    ticket_id: str,
+    ticket_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await close_ticket(db, ticket_id, current_user)
+    return await close_ticket(db, str(ticket_id), current_user)
 
 
 @router.delete("/{ticket_id}", status_code=204)
 async def delete_support_ticket(
-    ticket_id: str,
+    ticket_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await delete_ticket(db, ticket_id, current_user)
+    await delete_ticket(db, str(ticket_id), current_user)

@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import Optional, List
+from typing import List
 
 class Settings(BaseSettings):
     # Uygulama
@@ -11,7 +11,6 @@ class Settings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = [
         "https://denikey.website",
         "https://www.denikey.website",
-        "https://denikey-backend-production.up.railway.app",
     ]
 
     # Veritabanı

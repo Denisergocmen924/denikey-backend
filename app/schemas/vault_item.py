@@ -1,11 +1,11 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
 
 class CustomFieldCreate(BaseModel):
-    field_name: str
-    field_type: str
-    encrypted_value: Optional[str] = None
+    field_name: str = Field(..., max_length=200)
+    field_type: str = Field(..., max_length=50)
+    encrypted_value: Optional[str] = Field(None, max_length=10000)
     sort_order: int = 0
 
 class CustomFieldResponse(BaseModel):
@@ -17,41 +17,41 @@ class CustomFieldResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 class CustomFieldData(BaseModel):
-    field_name: str
-    value: str
-    field_type: str = "text"
+    field_name: str = Field(..., max_length=200)
+    value: str = Field(..., max_length=10000)
+    field_type: str = Field("text", max_length=50)
 
 class VaultItemCreate(BaseModel):
-    title: Optional[str] = None
-    username: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    encrypted_password: str
-    iv: Optional[str] = None
-    notes: Optional[str] = None
-    url: Optional[str] = None
+    title: Optional[str] = Field(None, max_length=500)
+    username: Optional[str] = Field(None, max_length=500)
+    email: Optional[str] = Field(None, max_length=500)
+    phone: Optional[str] = Field(None, max_length=50)
+    encrypted_password: str = Field(..., max_length=20000)
+    iv: Optional[str] = Field(None, max_length=100)
+    notes: Optional[str] = Field(None, max_length=10000)
+    url: Optional[str] = Field(None, max_length=2000)
     category_id: Optional[str] = None
     item_type_id: Optional[str] = None
-    color: Optional[str] = None
-    icon: Optional[str] = None
+    color: Optional[str] = Field(None, max_length=20)
+    icon: Optional[str] = Field(None, max_length=100)
     is_favorite: bool = False
     sort_order: int = 0
     custom_fields: Optional[List[CustomFieldCreate]] = []
     custom_fields_data: Optional[List[CustomFieldData]] = []
 
 class VaultItemUpdate(BaseModel):
-    title: Optional[str] = None
-    username: Optional[str] = None
-    email: Optional[str] = None
-    phone: Optional[str] = None
-    encrypted_password: Optional[str] = None
-    iv: Optional[str] = None
-    notes: Optional[str] = None
-    url: Optional[str] = None
+    title: Optional[str] = Field(None, max_length=500)
+    username: Optional[str] = Field(None, max_length=500)
+    email: Optional[str] = Field(None, max_length=500)
+    phone: Optional[str] = Field(None, max_length=50)
+    encrypted_password: Optional[str] = Field(None, max_length=20000)
+    iv: Optional[str] = Field(None, max_length=100)
+    notes: Optional[str] = Field(None, max_length=10000)
+    url: Optional[str] = Field(None, max_length=2000)
     category_id: Optional[str] = None
     item_type_id: Optional[str] = None
-    color: Optional[str] = None
-    icon: Optional[str] = None
+    color: Optional[str] = Field(None, max_length=20)
+    icon: Optional[str] = Field(None, max_length=100)
     is_favorite: Optional[bool] = None
     sort_order: Optional[int] = None
     custom_fields_data: Optional[List[CustomFieldData]] = None

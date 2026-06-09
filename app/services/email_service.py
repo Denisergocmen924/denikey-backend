@@ -57,6 +57,7 @@ async def send_verification_code(
         user_id=uuid.UUID(user_id),
         code=code,
         purpose=purpose,
+        target_email=email,
         is_used=False,
         expires_at=expires_at,
     )
@@ -99,20 +100,24 @@ async def verify_code(
     user_id: str,
     code: str,
     purpose: str,
+    target_email: str = None,
 ) -> bool:
     now = datetime.now(timezone.utc)
-    # Kod değeri olmadan sorgula — yanlış denemede failed_attempts artırabilmek için
+    # order_by + limit(1) — eşzamanlı istek race'inde birden fazla aktif kod olsa 500 vermez
     result = await db.execute(
         select(VerificationCode).where(
             VerificationCode.user_id == uuid.UUID(user_id),
             VerificationCode.purpose == purpose,
             VerificationCode.is_used == False,
             VerificationCode.expires_at > now,
-        )
+        ).order_by(VerificationCode.expires_at.desc()).limit(1)
     )
     verification = result.scalar_one_or_none()
 
     if not verification:
+        return False
+
+    if target_email and verification.target_email != target_email:
         return False
 
     if verification.code != code:

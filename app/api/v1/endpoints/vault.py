@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
+import uuid
 from app.db.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
@@ -39,45 +40,45 @@ async def list_items(
 
 @router.get("/items/{item_id}", response_model=VaultItemResponse)
 async def get_item(
-    item_id: str,
+    item_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return await get_vault_item(db, item_id, current_user)
+    return await get_vault_item(db, str(item_id), current_user)
 
 
 @router.put("/items/{item_id}", response_model=VaultItemResponse)
 async def update_item(
-    item_id: str,
+    item_id: uuid.UUID,
     data: VaultItemUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return await update_vault_item(db, item_id, data, current_user)
+    return await update_vault_item(db, str(item_id), data, current_user)
 
 
 @router.delete("/items/{item_id}")
 async def delete_item(
-    item_id: str,
+    item_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    return await delete_vault_item(db, item_id, current_user)
+    return await delete_vault_item(db, str(item_id), current_user)
 
 
 @router.get("/items/{item_id}/history")
 async def list_password_history(
-    item_id: str,
+    item_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await get_password_history(db, item_id, current_user)
+    return await get_password_history(db, str(item_id), current_user)
 
 
 @router.delete("/items/{item_id}/history")
 async def delete_password_history(
-    item_id: str,
+    item_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await clear_password_history(db, item_id, current_user)
+    return await clear_password_history(db, str(item_id), current_user)

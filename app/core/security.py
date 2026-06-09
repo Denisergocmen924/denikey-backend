@@ -2,7 +2,8 @@ import os
 import base64
 from argon2.low_level import hash_secret_raw, Type
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from jose import JWTError, jwt
+import jwt
+from jwt.exceptions import PyJWTError
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from app.core.config import settings
@@ -121,7 +122,7 @@ def verify_access_token(token: str) -> Optional[dict]:
         if payload.get("type") != "access":
             return None
         return payload
-    except JWTError:
+    except PyJWTError:
         return None
 
 
@@ -138,7 +139,7 @@ def verify_refresh_token(token: str) -> Optional[dict]:
         if payload.get("type") != "refresh":
             return None
         return payload
-    except JWTError:
+    except PyJWTError:
         return None
 
 
@@ -166,7 +167,7 @@ def verify_email_verify_token(token: str) -> Optional[dict]:
         if payload.get("type") != "email_verify":
             return None
         return payload
-    except JWTError:
+    except PyJWTError:
         return None
 
 

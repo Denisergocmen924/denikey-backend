@@ -4,7 +4,7 @@ from slowapi.util import get_remote_address
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.password_generator import generate_password
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 router = APIRouter(prefix="/password", tags=["password"])
@@ -12,7 +12,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 class PasswordGenerateRequest(BaseModel):
-    length: int = 16
+    length: int = Field(16, ge=4, le=256)
     uppercase: bool = True
     lowercase: bool = True
     numbers: bool = True

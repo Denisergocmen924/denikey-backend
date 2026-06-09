@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
+import uuid
 from app.db.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
@@ -39,11 +40,11 @@ async def list_devices(
 
 @router.delete("/{device_id}")
 async def revoke_device_endpoint(
-    device_id: str,
+    device_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    success = await revoke_device(db, str(current_user.id), device_id)
+    success = await revoke_device(db, str(current_user.id), str(device_id))
     if not success:
         raise HTTPException(status_code=404, detail="Cihaz bulunamadı")
     await db.commit()
@@ -52,11 +53,11 @@ async def revoke_device_endpoint(
 
 @router.patch("/{device_id}/ban")
 async def ban_device_endpoint(
-    device_id: str,
+    device_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    success = await ban_device(db, str(current_user.id), device_id)
+    success = await ban_device(db, str(current_user.id), str(device_id))
     if not success:
         raise HTTPException(status_code=404, detail="Cihaz bulunamadı")
     await db.commit()
@@ -65,11 +66,11 @@ async def ban_device_endpoint(
 
 @router.patch("/{device_id}/unban")
 async def unban_device_endpoint(
-    device_id: str,
+    device_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    success = await unban_device(db, str(current_user.id), device_id)
+    success = await unban_device(db, str(current_user.id), str(device_id))
     if not success:
         raise HTTPException(status_code=404, detail="Cihaz bulunamadı")
     await db.commit()
@@ -78,11 +79,11 @@ async def unban_device_endpoint(
 
 @router.delete("/{device_id}/permanent")
 async def delete_device_endpoint(
-    device_id: str,
+    device_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    success = await delete_device(db, str(current_user.id), device_id)
+    success = await delete_device(db, str(current_user.id), str(device_id))
     if not success:
         raise HTTPException(status_code=404, detail="Cihaz bulunamadı")
     await db.commit()
@@ -91,12 +92,12 @@ async def delete_device_endpoint(
 
 @router.patch("/{device_id}/rename")
 async def rename_device_endpoint(
-    device_id: str,
+    device_id: uuid.UUID,
     body: DeviceRenameRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    success = await rename_device(db, str(current_user.id), device_id, body.display_name)
+    success = await rename_device(db, str(current_user.id), str(device_id), body.display_name)
     if not success:
         raise HTTPException(status_code=404, detail="Cihaz bulunamadı")
     await db.commit()
