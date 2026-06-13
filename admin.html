@@ -305,6 +305,9 @@ tr:hover td { background: #fafbff; }
       <div class="nav-item" onclick="showSection('audit')" id="nav-audit">
         <span class="nav-icon">📋</span> Audit Log
       </div>
+      <div class="nav-item" onclick="showSection('contacts')" id="nav-contacts">
+        <span class="nav-icon">📬</span>İletişim<span class="nav-badge" id="contact-badge" style="display:none">0</span>
+      </div>
       <div class="nav-item" onclick="showSection('settings')" id="nav-settings">
         <span class="nav-icon">⚙️</span> Ayarlar
       </div>
@@ -392,6 +395,31 @@ tr:hover td { background: #fafbff; }
         </div>
       </div>
 
+      <!-- İLETİŞİM -->
+      <div id="section-contacts" class="section">
+        <div class="card">
+          <div class="card-header">
+            <h3>Website İletişim Formları</h3>
+            <div class="card-actions">
+              <div class="filter-bar">
+                <button class="filter-btn active" onclick="setContactFilter('all',null,this)">Tümü</button>
+                <button class="filter-btn" onclick="setContactFilter('type','general',this)">Genel</button>
+                <button class="filter-btn" onclick="setContactFilter('type','business',this)">İş Teklifi</button>
+                <button class="filter-btn" onclick="setContactFilter('status','new',this)">Yeni</button>
+                <button class="filter-btn" onclick="setContactFilter('status','read',this)">Okundu</button>
+                <button class="filter-btn" onclick="setContactFilter('status','closed',this)">Kapalı</button>
+              </div>
+            </div>
+          </div>
+          <div class="ticket-layout">
+            <div class="ticket-list" id="contact-list"><div class="loading"><div class="spinner"></div></div></div>
+            <div class="ticket-detail" id="contact-detail">
+              <div class="ticket-detail-empty"><span style="font-size:32px">📬</span><span>Bir mesaj seçin</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- SETTINGS -->
       <div id="section-settings" class="section">
         <div class="settings-section">
@@ -429,6 +457,8 @@ let APP_KEY = '';
 let usersPage = 0, usersTotal = 0, userSearchVal = '';
 let auditPage = 0, auditTotal = 0;
 let ticketFilter = 'all', selectedTicketId = null;
+let contactTypeFilter = null, contactStatusFilter = null, selectedContactId = null;
+let _contacts = [];
 let debounceTimer = null;
 let _tickets = [];
 
@@ -445,6 +475,7 @@ async function login() {
   document.getElementById('app').style.display = 'flex';
   loadDashboard();
   loadTicketBadge();
+  loadContactBadge();
 }
 
 function logout() {
@@ -468,13 +499,14 @@ function showSection(name) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(`section-${name}`).classList.add('active');
   document.getElementById(`nav-${name}`).classList.add('active');
-  const titles = { dashboard:'Dashboard', users:'Kullanıcılar', tickets:'Ticketlar', audit:'Audit Log', settings:'Ayarlar' };
+  const titles = { dashboard:'Dashboard', users:'Kullanıcılar', tickets:'Ticketlar', audit:'Audit Log', contacts:'İletişim', settings:'Ayarlar' };
   document.getElementById('section-title').textContent = titles[name];
   document.getElementById('header-meta').textContent = new Date().toLocaleDateString('tr-TR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
   if (name === 'dashboard') loadDashboard();
   else if (name === 'users') { usersPage = 0; loadUsers(); }
   else if (name === 'tickets') loadTickets();
   else if (name === 'audit') { auditPage = 0; loadAuditLogs(); }
+  else if (name === 'contacts') loadContacts();
   else if (name === 'settings') loadSettings();
 }
 
@@ -730,6 +762,106 @@ async function loadAuditLogs() {
 
 function changeAuditPage(dir) { auditPage = Math.max(0, auditPage + dir); loadAuditLogs(); }
 
+// CONTACTS
+function setContactFilter(key, value, btn) {
+  contactTypeFilter = null; contactStatusFilter = null;
+  if (key === 'type') contactTypeFilter = value;
+  else if (key === 'status') contactStatusFilter = value;
+  document.querySelectorAll('#section-contacts .filter-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  selectedContactId = null; loadContacts();
+}
+
+async function loadContacts() {
+  const list = document.getElementById('contact-list');
+  list.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  document.getElementById('contact-detail').innerHTML = '<div class="ticket-detail-empty"><span style="font-size:32px">📬</span><span>Bir mesaj seçin</span></div>';
+  try {
+    const q = new URLSearchParams();
+    if (contactTypeFilter) q.set('type_filter', contactTypeFilter);
+    if (contactStatusFilter) q.set('status_filter', contactStatusFilter);
+    const d = await apiFetch(`/admin/contacts?${q}`);
+    _contacts = d.contacts;
+    if (!_contacts.length) { list.innerHTML = '<div class="empty">Mesaj bulunamadı</div>'; return; }
+    list.innerHTML = _contacts.map(c => `
+      <div class="ticket-item" data-id="${c.id}" onclick="selectContact('${c.id}')">
+        <div class="ticket-item-subject">${esc(c.subject)}</div>
+        <div class="ticket-item-meta">${contactTypeBadge(c.type)} ${contactStatusBadge(c.status)}<span style="margin-left:auto">${fmtDate(c.created_at)}</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px">${esc(c.name)} · ${esc(c.email)}</div>
+      </div>`).join('');
+  } catch(e) { list.innerHTML = `<div class="empty">Hata: ${e.message}</div>`; }
+}
+
+async function loadContactBadge() {
+  try {
+    const s = await apiFetch('/admin/contacts/stats');
+    const b = document.getElementById('contact-badge');
+    if (s.new > 0) { b.textContent = s.new; b.style.display = 'inline-block'; } else b.style.display = 'none';
+  } catch(e) {}
+}
+
+function contactTypeBadge(type) {
+  return type === 'business'
+    ? '<span class="badge badge-purple">İş Teklifi</span>'
+    : '<span class="badge badge-info">Genel</span>';
+}
+
+function contactStatusBadge(s) {
+  if (s === 'new') return '<span class="badge badge-warning">Yeni</span>';
+  if (s === 'read') return '<span class="badge badge-gray">Okundu</span>';
+  if (s === 'closed') return '<span class="badge badge-success">Kapalı</span>';
+  return `<span class="badge badge-gray">${esc(s)}</span>`;
+}
+
+function selectContact(id) {
+  selectedContactId = id;
+  document.querySelectorAll('.ticket-item').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
+  const c = _contacts.find(x => x.id === id);
+  if (c) renderContactDetail(c);
+}
+
+function renderContactDetail(c) {
+  document.getElementById('contact-detail').innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:17px;font-weight:700;margin-bottom:8px">${esc(c.subject)}</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)">
+          ${contactTypeBadge(c.type)} ${contactStatusBadge(c.status)}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="updateContactStatus('read')">Okundu</button>
+        <button class="btn btn-ghost btn-sm" onclick="updateContactStatus('closed')">Kapat</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteContact()">Sil</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;font-size:13px">
+      <div><span style="color:var(--muted)">Ad: </span><b>${esc(c.name)}</b></div>
+      <div><span style="color:var(--muted)">E-posta: </span><a href="mailto:${esc(c.email)}" style="color:var(--purple)">${esc(c.email)}</a></div>
+    </div>
+    <div style="background:#f8f9fc;border-radius:12px;padding:16px;font-size:14px;line-height:1.6;white-space:pre-wrap">${esc(c.message)}</div>`;
+}
+
+async function updateContactStatus(s) {
+  if (!selectedContactId) return;
+  try {
+    const updated = await apiFetch(`/admin/contacts/${selectedContactId}/status`, 'PATCH', { status: s });
+    const idx = _contacts.findIndex(x => x.id === selectedContactId);
+    if (idx !== -1) _contacts[idx] = updated;
+    showToast('Durum güncellendi', 'success');
+    loadContacts(); loadContactBadge();
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
+async function deleteContact() {
+  if (!selectedContactId || !confirm('Bu mesajı kalıcı olarak silmek istiyor musunuz?')) return;
+  try {
+    await apiFetch(`/admin/contacts/${selectedContactId}`, 'DELETE');
+    showToast('Mesaj silindi', 'success');
+    selectedContactId = null; loadContacts(); loadContactBadge();
+  } catch(e) { showToast(e.message, 'error'); }
+}
+
 // SETTINGS
 async function loadSettings() {
   try {
@@ -774,6 +906,7 @@ if (savedKey) {
       document.getElementById('app').style.display = 'flex';
       loadDashboard();
       loadTicketBadge();
+      loadContactBadge();
     }
   });
 }

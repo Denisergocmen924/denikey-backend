@@ -1,0 +1,35 @@
+import asyncio
+import uuid
+from fastapi import APIRouter, Depends, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db.database import get_db
+from app.models.website_contact import WebsiteContact
+from app.schemas.website_contact import WebsiteContactCreate
+from app.services.email_service import send_contact_notification
+
+router = APIRouter(prefix="/contact", tags=["Contact"])
+limiter = Limiter(key_func=get_remote_address)
+
+
+@router.post("")
+@limiter.limit("5/hour")
+async def create_contact(
+    request: Request,
+    payload: WebsiteContactCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    contact = WebsiteContact(
+        id=uuid.uuid4(),
+        type=payload.type,
+        name=payload.name,
+        email=payload.email,
+        subject=payload.subject,
+        message=payload.message,
+        status="new",
+    )
+    db.add(contact)
+    await db.commit()
+    asyncio.create_task(send_contact_notification(contact))
+    return {"ok": True}

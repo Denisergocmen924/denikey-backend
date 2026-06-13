@@ -176,6 +176,29 @@ async def send_account_deletion_notification(email: str) -> bool:
         return False
 
 
+async def send_contact_notification(contact) -> None:
+    type_label = "İş Teklifi" if contact.type == "business" else "Genel İletişim"
+    asyncio.create_task(_fire_resend({
+        "from": "noreply@denikey.website",
+        "to": "denisergocmen@gmail.com",
+        "reply_to": contact.email,
+        "subject": f"[DeniKey İletişim] {type_label} — {contact.subject}",
+        "html": f"""
+            <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
+                <h2 style="color: #534AB7;">DeniKey — Yeni İletişim Formu</h2>
+                <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
+                    <tr><td style="padding:6px 0;color:#6b7280;width:100px">Tür</td><td><b>{type_label}</b></td></tr>
+                    <tr><td style="padding:6px 0;color:#6b7280">Ad</td><td>{contact.name}</td></tr>
+                    <tr><td style="padding:6px 0;color:#6b7280">E-posta</td><td><a href="mailto:{contact.email}">{contact.email}</a></td></tr>
+                    <tr><td style="padding:6px 0;color:#6b7280">Konu</td><td>{contact.subject}</td></tr>
+                </table>
+                <div style="background:#f5f5f5;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:14px;line-height:1.6">{contact.message}</div>
+                <p style="color:#888;font-size:12px;margin-top:16px">Admin panelinden yönet: <a href="https://denikey-backend.fly.dev/admin">Admin Panel</a></p>
+            </div>
+        """,
+    }))
+
+
 async def send_email_change_notification(old_email: str) -> bool:
     try:
         await asyncio.to_thread(resend.Emails.send, {

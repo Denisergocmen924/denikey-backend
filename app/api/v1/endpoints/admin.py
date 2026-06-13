@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, desc, text
 from app.db.database import get_db
 from app.models.support_ticket import SupportTicket
+from app.models.website_contact import WebsiteContact
 from app.models.user import User
 from app.models.device import Device
 from app.models.audit_log import AuditLog
@@ -461,3 +462,95 @@ async def update_status(
     await db.commit()
     await db.refresh(ticket)
     return _serialize_ticket(ticket, email)
+
+
+# --- Website İletişim ---
+
+def _serialize_contact(c: WebsiteContact) -> dict:
+    return {
+        "id": str(c.id),
+        "type": c.type,
+        "name": c.name,
+        "email": c.email,
+        "subject": c.subject,
+        "message": c.message,
+        "status": c.status,
+        "created_at": c.created_at.isoformat() if c.created_at else None,
+    }
+
+
+@router.get("/contacts")
+@limiter.limit("30/minute")
+async def list_contacts(
+    request: Request,
+    type_filter: Optional[str] = None,
+    status_filter: Optional[str] = None,
+    page: int = 0,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_admin),
+):
+    q = select(WebsiteContact).order_by(desc(WebsiteContact.created_at))
+    if type_filter:
+        q = q.where(WebsiteContact.type == type_filter)
+    if status_filter:
+        q = q.where(WebsiteContact.status == status_filter)
+    total = (await db.execute(select(func.count()).select_from(q.subquery()))).scalar()
+    rows = (await db.execute(q.offset(page * 20).limit(20))).scalars().all()
+    return {"total": total, "contacts": [_serialize_contact(c) for c in rows]}
+
+
+@router.get("/contacts/stats")
+@limiter.limit("30/minute")
+async def contact_stats(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_admin),
+):
+    new_count = (await db.execute(
+        select(func.count()).select_from(WebsiteContact).where(WebsiteContact.status == "new")
+    )).scalar()
+    return {"new": new_count}
+
+
+class ContactStatusBody(BaseModel):
+    status: str
+
+
+@router.patch("/contacts/{contact_id}/status")
+@limiter.limit("20/minute")
+async def update_contact_status(
+    request: Request,
+    contact_id: str,
+    body: ContactStatusBody,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_admin),
+):
+    if body.status not in ("new", "read", "closed"):
+        raise HTTPException(status_code=400, detail="Geçersiz durum")
+    c = (await db.execute(
+        select(WebsiteContact).where(WebsiteContact.id == uuid.UUID(contact_id))
+    )).scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="İletişim kaydı bulunamadı")
+    c.status = body.status
+    await db.commit()
+    await db.refresh(c)
+    return _serialize_contact(c)
+
+
+@router.delete("/contacts/{contact_id}")
+@limiter.limit("20/minute")
+async def delete_contact(
+    request: Request,
+    contact_id: str,
+    db: AsyncSession = Depends(get_db),
+    _: None = Depends(_require_admin),
+):
+    c = (await db.execute(
+        select(WebsiteContact).where(WebsiteContact.id == uuid.UUID(contact_id))
+    )).scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="İletişim kaydı bulunamadı")
+    await db.delete(c)
+    await db.commit()
+    return {"ok": True}

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth, vault, category, password, audit_log,
-    support_ticket, trash, item_type, admin, version, device,
+    support_ticket, trash, item_type, admin, version, device, contact,
 )
 
 router = APIRouter(prefix="/api/v1")
@@ -16,3 +16,4 @@ router.include_router(item_type.router)
 router.include_router(admin.router)
 router.include_router(version.router)
 router.include_router(device.router)
+router.include_router(contact.router)
