@@ -82,6 +82,7 @@ async def close_ticket(db: AsyncSession, ticket_id: str, current_user: User) -> 
 
     ticket.status = "closed"
     await db.flush()
+    await db.refresh(ticket)
     return _serialize(ticket)
 
 
