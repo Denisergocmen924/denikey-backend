@@ -87,6 +87,23 @@ async def get_device_status(db: AsyncSession, user_id: str, device_id: str) -> s
     return device.status if device else None
 
 
+async def check_and_update_device(db: AsyncSession, user_id: str, device_id: str) -> str | None:
+    """Tek sorguda cihaz durumunu kontrol eder; aktifse last_active günceller."""
+    result = await db.execute(
+        select(Device).where(
+            Device.user_id == uuid.UUID(user_id),
+            Device.device_name == device_id,
+        )
+    )
+    device = result.scalar_one_or_none()
+    if not device:
+        return None
+    if device.status not in ("revoked", "banned"):
+        device.last_active_at = datetime.now(timezone.utc)
+        await db.flush()
+    return device.status
+
+
 async def get_user_devices(db: AsyncSession, user_id: str) -> list[Device]:
     result = await db.execute(
         select(Device)

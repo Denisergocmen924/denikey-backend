@@ -74,7 +74,7 @@ async def create_vault_item(db: AsyncSession, data: VaultItemCreate, current_use
 
 async def get_vault_items(db: AsyncSession, current_user: User) -> list:
     # Trash'tekileri filtrele
-    trash_subquery = select(Trash.vault_item_id)
+    trash_subquery = select(Trash.vault_item_id).where(Trash.user_id == current_user.id)
 
     result = await db.execute(
         select(VaultItem)
