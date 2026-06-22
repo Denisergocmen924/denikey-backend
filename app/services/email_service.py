@@ -1,4 +1,5 @@
 import asyncio
+import html
 import logging
 import resend
 import secrets
@@ -134,6 +135,8 @@ async def verify_code(
 
 
 async def send_support_reply(user_email: str, subject: str, reply_text: str) -> bool:
+    # Kullanıcı kaynaklı metin HTML maile gömülmeden önce kaçırılır (injection önlemi)
+    safe_reply = html.escape(reply_text or "")
     try:
         await asyncio.to_thread(resend.Emails.send, {
             "from": "noreply@denikey.website",
@@ -144,7 +147,7 @@ async def send_support_reply(user_email: str, subject: str, reply_text: str) -> 
                     <h2 style="color: #534AB7;">DeniKey Destek</h2>
                     <p>Destek talebinize yanıt verildi:</p>
                     <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; border-left: 4px solid #534AB7; white-space: pre-wrap;">
-                        {reply_text}
+                        {safe_reply}
                     </div>
                     <p style="color: #888; font-size: 12px; margin-top: 16px;">DeniKey Destek Ekibi</p>
                 </div>
@@ -178,6 +181,11 @@ async def send_account_deletion_notification(email: str) -> bool:
 
 async def send_contact_notification(contact) -> None:
     type_label = "İş Teklifi" if contact.type == "business" else "Genel İletişim"
+    # Public iletişim formundan gelen alanlar HTML maile gömülmeden önce kaçırılır (injection önlemi)
+    name = html.escape(contact.name or "")
+    email = html.escape(contact.email or "")
+    subject = html.escape(contact.subject or "")
+    message = html.escape(contact.message or "")
     asyncio.create_task(_fire_resend({
         "from": "noreply@denikey.website",
         "to": "denisergocmen@gmail.com",
@@ -188,11 +196,11 @@ async def send_contact_notification(contact) -> None:
                 <h2 style="color: #534AB7;">DeniKey — Yeni İletişim Formu</h2>
                 <table style="width:100%;border-collapse:collapse;margin-bottom:16px">
                     <tr><td style="padding:6px 0;color:#6b7280;width:100px">Tür</td><td><b>{type_label}</b></td></tr>
-                    <tr><td style="padding:6px 0;color:#6b7280">Ad</td><td>{contact.name}</td></tr>
-                    <tr><td style="padding:6px 0;color:#6b7280">E-posta</td><td><a href="mailto:{contact.email}">{contact.email}</a></td></tr>
-                    <tr><td style="padding:6px 0;color:#6b7280">Konu</td><td>{contact.subject}</td></tr>
+                    <tr><td style="padding:6px 0;color:#6b7280">Ad</td><td>{name}</td></tr>
+                    <tr><td style="padding:6px 0;color:#6b7280">E-posta</td><td><a href="mailto:{email}">{email}</a></td></tr>
+                    <tr><td style="padding:6px 0;color:#6b7280">Konu</td><td>{subject}</td></tr>
                 </table>
-                <div style="background:#f5f5f5;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:14px;line-height:1.6">{contact.message}</div>
+                <div style="background:#f5f5f5;padding:16px;border-radius:8px;white-space:pre-wrap;font-size:14px;line-height:1.6">{message}</div>
                 <p style="color:#888;font-size:12px;margin-top:16px">Admin panelinden yönet: <a href="https://denikey-backend.fly.dev/admin">Admin Panel</a></p>
             </div>
         """,

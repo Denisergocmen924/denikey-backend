@@ -129,27 +129,27 @@ async def list_users(
 @limiter.limit("30/minute")
 async def get_user(
     request: Request,
-    user_id: str,
+    user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_admin),
 ):
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
 
     devices_result = await db.execute(
-        select(Device).where(Device.user_id == uuid.UUID(user_id)).order_by(desc(Device.last_active_at))
+        select(Device).where(Device.user_id == user_id).order_by(desc(Device.last_active_at))
     )
     devices = devices_result.scalars().all()
 
     logs_result = await db.execute(
-        select(AuditLog).where(AuditLog.user_id == uuid.UUID(user_id)).order_by(desc(AuditLog.created_at)).limit(15)
+        select(AuditLog).where(AuditLog.user_id == user_id).order_by(desc(AuditLog.created_at)).limit(15)
     )
     logs = logs_result.scalars().all()
 
     vault_count = (await db.execute(
-        select(func.count()).select_from(VaultItem).where(VaultItem.user_id == uuid.UUID(user_id))
+        select(func.count()).select_from(VaultItem).where(VaultItem.user_id == user_id)
     )).scalar()
 
     return {
@@ -194,11 +194,11 @@ async def get_user(
 @limiter.limit("20/minute")
 async def ban_user(
     request: Request,
-    user_id: str,
+    user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_admin),
 ):
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
@@ -212,11 +212,11 @@ async def ban_user(
 @limiter.limit("20/minute")
 async def unban_user(
     request: Request,
-    user_id: str,
+    user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_admin),
 ):
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
@@ -231,11 +231,11 @@ async def unban_user(
 @limiter.limit("10/minute")
 async def delete_user(
     request: Request,
-    user_id: str,
+    user_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_admin),
 ):
-    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
@@ -251,7 +251,7 @@ async def delete_user(
 async def list_audit_logs(
     request: Request,
     page: int = 0,
-    user_id: Optional[str] = None,
+    user_id: Optional[uuid.UUID] = None,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_admin),
 ):
@@ -261,7 +261,7 @@ async def list_audit_logs(
         .order_by(desc(AuditLog.created_at))
     )
     if user_id:
-        query = query.where(AuditLog.user_id == uuid.UUID(user_id))
+        query = query.where(AuditLog.user_id == user_id)
 
     count_q = select(func.count()).select_from(query.subquery())
     total = (await db.execute(count_q)).scalar()
@@ -380,7 +380,7 @@ class ReplyBody(BaseModel):
 @limiter.limit("20/minute")
 async def reply_ticket(
     request: Request,
-    ticket_id: str,
+    ticket_id: uuid.UUID,
     body: ReplyBody,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_admin),
@@ -388,7 +388,7 @@ async def reply_ticket(
     result = await db.execute(
         select(SupportTicket, User.email)
         .join(User, SupportTicket.user_id == User.id)
-        .where(SupportTicket.id == uuid.UUID(ticket_id))
+        .where(SupportTicket.id == ticket_id)
     )
     row = result.one_or_none()
     if not row:
@@ -414,7 +414,7 @@ class ArchiveBody(BaseModel):
 @limiter.limit("20/minute")
 async def archive_ticket(
     request: Request,
-    ticket_id: str,
+    ticket_id: uuid.UUID,
     body: ArchiveBody,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_admin),
@@ -422,7 +422,7 @@ async def archive_ticket(
     result = await db.execute(
         select(SupportTicket, User.email)
         .join(User, SupportTicket.user_id == User.id)
-        .where(SupportTicket.id == uuid.UUID(ticket_id))
+        .where(SupportTicket.id == ticket_id)
     )
     row = result.one_or_none()
     if not row:
@@ -442,7 +442,7 @@ class StatusBody(BaseModel):
 @limiter.limit("20/minute")
 async def update_status(
     request: Request,
-    ticket_id: str,
+    ticket_id: uuid.UUID,
     body: StatusBody,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_admin),
@@ -452,7 +452,7 @@ async def update_status(
     result = await db.execute(
         select(SupportTicket, User.email)
         .join(User, SupportTicket.user_id == User.id)
-        .where(SupportTicket.id == uuid.UUID(ticket_id))
+        .where(SupportTicket.id == ticket_id)
     )
     row = result.one_or_none()
     if not row:
@@ -520,7 +520,7 @@ class ContactStatusBody(BaseModel):
 @limiter.limit("20/minute")
 async def update_contact_status(
     request: Request,
-    contact_id: str,
+    contact_id: uuid.UUID,
     body: ContactStatusBody,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_admin),
@@ -528,7 +528,7 @@ async def update_contact_status(
     if body.status not in ("new", "read", "closed"):
         raise HTTPException(status_code=400, detail="Geçersiz durum")
     c = (await db.execute(
-        select(WebsiteContact).where(WebsiteContact.id == uuid.UUID(contact_id))
+        select(WebsiteContact).where(WebsiteContact.id == contact_id)
     )).scalar_one_or_none()
     if not c:
         raise HTTPException(status_code=404, detail="İletişim kaydı bulunamadı")
@@ -542,12 +542,12 @@ async def update_contact_status(
 @limiter.limit("20/minute")
 async def delete_contact(
     request: Request,
-    contact_id: str,
+    contact_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     _: None = Depends(_require_admin),
 ):
     c = (await db.execute(
-        select(WebsiteContact).where(WebsiteContact.id == uuid.UUID(contact_id))
+        select(WebsiteContact).where(WebsiteContact.id == contact_id)
     )).scalar_one_or_none()
     if not c:
         raise HTTPException(status_code=404, detail="İletişim kaydı bulunamadı")

@@ -28,7 +28,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 class VerifyEmailRequest(BaseModel):
-    user_id: str
+    user_id: uuid.UUID
     code: str
     device_id: Optional[str] = None
     device_type: Optional[str] = None
@@ -37,7 +37,7 @@ class ResendVerificationRequest(BaseModel):
     temp_token: str
 
 class VerifyDeviceRequest(BaseModel):
-    user_id: str
+    user_id: uuid.UUID
     code: str
     device_id: str
     device_type: Optional[str] = None
@@ -162,7 +162,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
 @limiter.limit("5/minute")
 async def verify_email_endpoint(data: VerifyEmailRequest, request: Request, db: AsyncSession = Depends(get_db)):
     ip = request.client.host if request.client else None
-    result = await verify_email(db, data.user_id, data.code, device_id=data.device_id, device_type=data.device_type, ip_address=ip)
+    result = await verify_email(db, str(data.user_id), data.code, device_id=data.device_id, device_type=data.device_type, ip_address=ip)
     return {
         "access_token": result["access_token"],
         "refresh_token": result["refresh_token"],
@@ -174,7 +174,7 @@ async def verify_email_endpoint(data: VerifyEmailRequest, request: Request, db: 
 @limiter.limit("5/minute")
 async def verify_device_endpoint(data: VerifyDeviceRequest, request: Request, db: AsyncSession = Depends(get_db)):
     ip = request.client.host if request.client else None
-    result = await verify_device(db, data.user_id, data.code, data.device_id, device_type=data.device_type, display_name=data.device_name, ip_address=ip)
+    result = await verify_device(db, str(data.user_id), data.code, data.device_id, device_type=data.device_type, display_name=data.device_name, ip_address=ip)
     return {
         "access_token": result["access_token"],
         "refresh_token": result["refresh_token"],

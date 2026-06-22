@@ -6,6 +6,7 @@ from app.models.user import User
 from app.services.item_type_service import get_item_types, create_item_type, delete_item_type, update_item_type
 from pydantic import BaseModel
 from typing import Optional
+import uuid
 
 router = APIRouter(prefix="/item-types", tags=["Item Types"])
 
@@ -62,21 +63,21 @@ class ItemTypeUpdate(BaseModel):
 
 @router.patch("/{item_type_id}")
 async def edit_item_type(
-    item_type_id: str,
+    item_type_id: uuid.UUID,
     data: ItemTypeUpdate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await update_item_type(current_user.id, item_type_id, data.model_dump(exclude_none=True), db)
+    result = await update_item_type(current_user.id, str(item_type_id), data.model_dump(exclude_none=True), db)
     await db.commit()
     return result
 
 
 @router.delete("/{item_type_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_item_type(
-    item_type_id: str,
+    item_type_id: uuid.UUID,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await delete_item_type(current_user.id, item_type_id, db)
+    await delete_item_type(current_user.id, str(item_type_id), db)
     await db.commit()
