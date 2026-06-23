@@ -1,4 +1,3 @@
-import asyncio
 import uuid
 from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
@@ -31,5 +30,7 @@ async def create_contact(
     )
     db.add(contact)
     await db.commit()
-    asyncio.create_task(send_contact_notification(contact))
+    # commit sonrası ORM nesnesinin alanları expire olur; bildirim arka planda
+    # (session kapandıktan sonra) çalıştığı için session'a bağlı olmayan payload geçilir.
+    await send_contact_notification(payload)
     return {"ok": True}
