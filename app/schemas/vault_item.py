@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
+import uuid
 
 class CustomFieldCreate(BaseModel):
     field_name: str = Field(..., max_length=200)
@@ -30,8 +31,8 @@ class VaultItemCreate(BaseModel):
     iv: Optional[str] = Field(None, max_length=100)
     notes: Optional[str] = Field(None, max_length=10000)
     url: Optional[str] = Field(None, max_length=2000)
-    category_id: Optional[str] = None
-    item_type_id: Optional[str] = None
+    category_id: Optional[uuid.UUID] = None
+    item_type_id: Optional[uuid.UUID] = None
     color: Optional[str] = Field(None, max_length=20)
     icon: Optional[str] = Field(None, max_length=100)
     is_favorite: bool = False
@@ -48,8 +49,8 @@ class VaultItemUpdate(BaseModel):
     iv: Optional[str] = Field(None, max_length=100)
     notes: Optional[str] = Field(None, max_length=10000)
     url: Optional[str] = Field(None, max_length=2000)
-    category_id: Optional[str] = None
-    item_type_id: Optional[str] = None
+    category_id: Optional[uuid.UUID] = None
+    item_type_id: Optional[uuid.UUID] = None
     color: Optional[str] = Field(None, max_length=20)
     icon: Optional[str] = Field(None, max_length=100)
     is_favorite: Optional[bool] = None

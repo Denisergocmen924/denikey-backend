@@ -1,22 +1,22 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
 
 
 class CategoryCreate(BaseModel):
-    name_tr: str
-    name_en: str
-    color: Optional[str] = None
-    icon: Optional[str] = None
+    name_tr: str = Field(..., max_length=100)
+    name_en: str = Field(..., max_length=100)
+    color: Optional[str] = Field(None, max_length=20)
+    icon: Optional[str] = Field(None, max_length=50)
     sort_order: int = 0
 
 
 class CategoryUpdate(BaseModel):
-    name_tr: Optional[str] = None
-    name_en: Optional[str] = None
-    color: Optional[str] = None
-    icon: Optional[str] = None
+    name_tr: Optional[str] = Field(None, max_length=100)
+    name_en: Optional[str] = Field(None, max_length=100)
+    color: Optional[str] = Field(None, max_length=20)
+    icon: Optional[str] = Field(None, max_length=50)
     sort_order: Optional[int] = None
 
 

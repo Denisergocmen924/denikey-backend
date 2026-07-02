@@ -4,7 +4,7 @@ from app.db.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.item_type_service import get_item_types, create_item_type, delete_item_type, update_item_type
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 import uuid
 
@@ -12,15 +12,15 @@ router = APIRouter(prefix="/item-types", tags=["Item Types"])
 
 
 class ItemTypeFieldCreate(BaseModel):
-    field_name: str
-    field_type: str = "text"   # text | secret | number | date | boolean
+    field_name: str = Field(..., max_length=100)
+    field_type: str = Field("text", max_length=20)   # text | secret | number | date | boolean
     is_required: bool = False
 
 
 class ItemTypeCreate(BaseModel):
-    name_tr: str
-    icon: Optional[str] = "category"
-    color: Optional[str] = "#534AB7"
+    name_tr: str = Field(..., max_length=100)
+    icon: Optional[str] = Field("category", max_length=50)
+    color: Optional[str] = Field("#534AB7", max_length=20)
     fields: Optional[list[ItemTypeFieldCreate]] = None
 
 
@@ -45,18 +45,18 @@ async def add_item_type(
 
 class FieldNameUpdate(BaseModel):
     id: str
-    field_name: str
+    field_name: str = Field(..., max_length=100)
 
 
 class NewFieldCreate(BaseModel):
-    field_name: str
-    field_type: str = "text"
+    field_name: str = Field(..., max_length=100)
+    field_type: str = Field("text", max_length=20)
 
 
 class ItemTypeUpdate(BaseModel):
-    name_tr: Optional[str] = None
-    icon: Optional[str] = None
-    color: Optional[str] = None
+    name_tr: Optional[str] = Field(None, max_length=100)
+    icon: Optional[str] = Field(None, max_length=50)
+    color: Optional[str] = Field(None, max_length=20)
     fields: Optional[list[FieldNameUpdate]] = None
     new_fields: Optional[list[NewFieldCreate]] = None
 

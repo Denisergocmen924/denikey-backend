@@ -214,7 +214,8 @@ async def refresh_token(request: Request, data: RefreshTokenRequest, db: AsyncSe
     if device_id:
         from app.services.device_service import get_device_status
         device_status = await get_device_status(db, user_id, device_id)
-        if device_status in ("revoked", "banned"):
+        # None = cihaz kalıcı silinmiş; refresh'i reddet (süresiz token yenilemeyi engeller)
+        if device_status is None or device_status in ("revoked", "banned"):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Bu cihazın oturumu sonlandırılmış, lütfen tekrar giriş yapın",

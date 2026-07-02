@@ -58,7 +58,8 @@ async def get_current_user(
     device_id = payload.get("did")
     if device_id:
         device_status = await check_and_update_device(db, user_id, device_id)
-        if device_status in ("revoked", "banned"):
+        # None = cihaz kalıcı silinmiş; token'ı geçersiz say (revoked gibi davran)
+        if device_status is None or device_status in ("revoked", "banned"):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Bu cihazın oturumu sonlandırılmış, lütfen tekrar giriş yapın",
