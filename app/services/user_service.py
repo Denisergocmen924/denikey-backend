@@ -247,15 +247,18 @@ async def login_user(db: AsyncSession, username: str, auth_verifier: str, device
 
 
 async def change_email_request(db: AsyncSession, user_id: str, new_email: str) -> None:
-    # Yeni email başka hesapta var mı?
-    result = await db.execute(select(User).where(User.email == new_email))
-    if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Bu e-posta zaten kullanılıyor")
-
     result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+
+    # Enumeration önlemi: e-postanın kayıtlı olup olmadığını SIZDIRMA — her hâlükârda
+    # endpoint jenerik "kod gönderildi" döner. Adres başka hesaptaysa üçüncü kişiye kod
+    # göndermemek için sessizce atlarız; çakışma confirm adımında (geçerli kod olmadan
+    # tamamlanamaz) doğal olarak reddedilir.
+    result = await db.execute(select(User).where(User.email == new_email))
+    if result.scalar_one_or_none() is not None:
+        return
 
     # Yeni adrese doğrulama kodu gönder
     await send_verification_code(db, user_id, new_email, "email_change")
@@ -274,6 +277,13 @@ async def change_email_confirm(db: AsyncSession, user_id: str, code: str, new_em
 
     is_valid = await verify_code(db, user_id, code, "email_change", target_email=new_email)
     if not is_valid:
+        raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş kod")
+
+    # Yarış-koşulu guard: request ile confirm arasında adres başka hesaba geçmiş olabilir.
+    # Sızıntı yapmamak için invalid-code ile aynı jenerik mesajı döneriz.
+    result = await db.execute(select(User).where(User.email == new_email))
+    other = result.scalar_one_or_none()
+    if other and str(other.id) != user_id:
         raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş kod")
 
     user.email = new_email

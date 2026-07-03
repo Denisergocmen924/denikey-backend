@@ -9,8 +9,8 @@ import os
 import secrets
 from datetime import datetime, timezone
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from app.core.ratelimit import get_client_ip
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import select
 from app.core.config import settings
@@ -66,7 +66,7 @@ async def lifespan(app: FastAPI):
         pass
 
 
-limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
+limiter = Limiter(key_func=get_client_ip, default_limits=["200/minute"])
 
 app = FastAPI(
     title=settings.APP_NAME,

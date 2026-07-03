@@ -1,14 +1,14 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 
 class UserRegister(BaseModel):
     username: str
     email: EmailStr
-    full_name: Optional[str] = None
+    full_name: Optional[str] = Field(None, max_length=100)          # User.full_name = String(100)
     auth_verifier: str  # istemci tarafı türetilen verifier — ham parola sunucuya gelmez
     encryption_key_salt: str
-    device_id: Optional[str] = None
-    device_type: Optional[str] = None
+    device_id: Optional[str] = Field(None, max_length=255)          # Device.device_name = String(255)
+    device_type: Optional[str] = Field(None, max_length=20)         # Device.device_type = String(20)
 
     @field_validator('username')
     @classmethod
@@ -23,9 +23,9 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     username: str
     auth_verifier: str  # ham parola değil; istemcide türetilen verifier
-    device_id: Optional[str] = None
-    device_type: Optional[str] = None
-    device_name: Optional[str] = None  # okunabilir isim: "Samsung Galaxy S21"
+    device_id: Optional[str] = Field(None, max_length=255)          # Device.device_name = String(255)
+    device_type: Optional[str] = Field(None, max_length=20)         # Device.device_type = String(20)
+    device_name: Optional[str] = Field(None, max_length=100)        # Device.display_name = String(100)
 
 class LoginSaltRequest(BaseModel):
     username: str
@@ -47,7 +47,7 @@ class UserResponse(BaseModel):
 
 class UserProfileUpdate(BaseModel):
     username: Optional[str] = None
-    full_name: Optional[str] = None
+    full_name: Optional[str] = Field(None, max_length=100)          # User.full_name = String(100)
 
     @field_validator('username')
     @classmethod

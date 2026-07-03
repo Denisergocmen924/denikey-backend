@@ -37,8 +37,8 @@ class VaultItemCreate(BaseModel):
     icon: Optional[str] = Field(None, max_length=100)
     is_favorite: bool = False
     sort_order: int = 0
-    custom_fields: Optional[List[CustomFieldCreate]] = []
-    custom_fields_data: Optional[List[CustomFieldData]] = []
+    custom_fields: Optional[List[CustomFieldCreate]] = Field(default=[], max_length=100)
+    custom_fields_data: Optional[List[CustomFieldData]] = Field(default=[], max_length=100)
 
 class VaultItemUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=500)
@@ -55,7 +55,7 @@ class VaultItemUpdate(BaseModel):
     icon: Optional[str] = Field(None, max_length=100)
     is_favorite: Optional[bool] = None
     sort_order: Optional[int] = None
-    custom_fields_data: Optional[List[CustomFieldData]] = None
+    custom_fields_data: Optional[List[CustomFieldData]] = Field(default=None, max_length=100)
 
 class VaultItemResponse(BaseModel):
     id: str

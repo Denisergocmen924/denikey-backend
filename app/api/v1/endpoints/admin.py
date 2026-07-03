@@ -16,12 +16,12 @@ from pydantic import BaseModel
 from datetime import datetime, timezone, date, timedelta
 from typing import Optional
 from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.core.ratelimit import get_client_ip
 import uuid
 import secrets
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip)
 
 
 def _require_admin(x_admin_key: str = Header(...)):

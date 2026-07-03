@@ -48,6 +48,15 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # E-posta doğrulaması geçidi: register token dağıtsa da, doğrulanmamış hesap
+    # korumalı endpoint'lere erişemez. Doğrulama/yeniden-gönderim akışı
+    # email_verify_token kullandığı için (get_current_user'a bağlı değil) etkilenmez.
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="E-posta adresinizi doğrulamanız gerekiyor",
+        )
+
     if user.is_locked:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

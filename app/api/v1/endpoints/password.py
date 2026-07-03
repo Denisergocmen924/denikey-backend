@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.core.ratelimit import get_client_ip
 from app.core.dependencies import get_current_user
 from app.models.user import User
 from app.services.password_generator import generate_password
@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 
 router = APIRouter(prefix="/password", tags=["password"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip)
 
 
 class PasswordGenerateRequest(BaseModel):

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.core.ratelimit import get_client_ip
 from app.db.database import get_db
 from app.schemas.user import (
     UserRegister, UserLogin, UserResponse, TokenResponse, UserProfileUpdate,
@@ -24,7 +24,7 @@ from typing import Optional
 from datetime import datetime, timezone
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip)
 
 
 class VerifyEmailRequest(BaseModel):
@@ -79,7 +79,7 @@ class TotpVerifyUnlockRequest(BaseModel):
 @router.post("/register")
 @limiter.limit("5/minute")
 async def register(data: UserRegister, request: Request, db: AsyncSession = Depends(get_db)):
-    ip = request.client.host if request.client else None
+    ip = get_client_ip(request)
     result = await register_user(db, data, ip_address=ip)
     return {
         "access_token": result["access_token"],
@@ -110,7 +110,7 @@ async def login_salt(data: LoginSaltRequest, request: Request, db: AsyncSession 
 @router.post("/login")
 @limiter.limit("10/minute")
 async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(get_db)):
-    ip = request.client.host if request.client else None
+    ip = get_client_ip(request)
     result = await login_user(
         db,
         data.username,
@@ -161,7 +161,7 @@ async def login(data: UserLogin, request: Request, db: AsyncSession = Depends(ge
 @router.post("/verify-email")
 @limiter.limit("5/minute")
 async def verify_email_endpoint(data: VerifyEmailRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    ip = request.client.host if request.client else None
+    ip = get_client_ip(request)
     result = await verify_email(db, str(data.user_id), data.code, device_id=data.device_id, device_type=data.device_type, ip_address=ip)
     return {
         "access_token": result["access_token"],
@@ -173,7 +173,7 @@ async def verify_email_endpoint(data: VerifyEmailRequest, request: Request, db: 
 @router.post("/verify-device")
 @limiter.limit("5/minute")
 async def verify_device_endpoint(data: VerifyDeviceRequest, request: Request, db: AsyncSession = Depends(get_db)):
-    ip = request.client.host if request.client else None
+    ip = get_client_ip(request)
     result = await verify_device(db, str(data.user_id), data.code, data.device_id, device_type=data.device_type, display_name=data.device_name, ip_address=ip)
     return {
         "access_token": result["access_token"],
@@ -442,7 +442,7 @@ async def totp_verify_login(
         await create_audit_log(
             db=db, user_id=user_id,
             action="login_totp_failed", status="failed",
-            ip_address=request.client.host if request.client else None,
+            ip_address=get_client_ip(request),
         )
         raise HTTPException(status_code=400, detail="Geçersiz doğrulama kodu")
 
@@ -462,7 +462,7 @@ async def totp_verify_login(
             await create_audit_log(
                 db=db, user_id=user_id,
                 action="login_new_device", status="pending",
-                ip_address=request.client.host if request.client else None,
+                ip_address=get_client_ip(request),
             )
             return {
                 "needs_device_verification": True,
@@ -474,7 +474,7 @@ async def totp_verify_login(
         if user.totp_trust_duration_seconds > 0:
             await set_totp_trust(db, user_id, device_id, user.totp_trust_duration_seconds)
 
-    ip = request.client.host if request.client else None
+    ip = get_client_ip(request)
     await create_audit_log(db=db, user_id=user_id, action="login_success", status="success", ip_address=ip)
     token_payload = {"sub": user_id, "username": user.username, "tv": user.token_version, "did": device_id or ""}
     return {
